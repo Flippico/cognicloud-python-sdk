@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cognicloud"
+version = "0.4.0"
+description = "CogniCloud SDK: browser sessions for agents, and the platform API."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "LicenseRef-Proprietary" }
+dependencies = []
+
+[project.urls]
+Source = "https://github.com/Flippico/cognicloud-python-sdk"
+
+[tool.setuptools.packages.find]
+where = ["src"]
