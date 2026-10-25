@@ -62,6 +62,8 @@ for event in endpoint.stream({"messages": [{"role": "user", "content": "Write a 
         print(f"{event.code}: {event.message}")
 ```
 
+`ResponsesRequest(extra={...})` sends any other field to the provider unchanged, such as `seed` or `reasoning`. The gateway refuses the fields it sets itself, such as `n` or `store`.
+
 `stream` opens the call before it returns, so a refusal raises immediately, before any event. Each event is a `DeltaEvent` (`text`), then one `DoneEvent` (`answer`), or one `ErrorEvent` (`code`, `message`). Streams are not retried and have no total timeout; the gateway ends them at five minutes. Stop early by closing the iterator; the gateway still settles the call.
 
 ## Errors

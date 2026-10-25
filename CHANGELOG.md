@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.9.0] - 2026-10-25
+
+- `ResponsesRequest(extra={...})` sends any other field to the provider unchanged. The gateway refuses the fields it sets itself (`n`, `best_of`, `background`, `store`, `stream_options`, `prompt`, `conversation`).
+
 ## [0.8.0] - 2026-10-25
 
 - `McpTool(label, server_url=..., bearer_token=...)` names an MCP server's address and bearer token. The gateway checks them and passes them to the provider. The token is hidden in `repr`. A tool with only a label still names a server the gateway is configured with.

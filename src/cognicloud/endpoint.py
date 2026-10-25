@@ -52,9 +52,11 @@ class ResponsesRequest:
     max_output_tokens: Optional[int] = None
     temperature: Optional[float] = None
     top_p: Optional[float] = None
+    # Any other field, sent to the provider unchanged. The gateway refuses the fields it sets itself, such as `n`.
+    extra: dict[str, Any] = field(default_factory=dict)
 
     def to_json(self) -> dict[str, Any]:
-        body: dict[str, Any] = {"input": self.input}
+        body: dict[str, Any] = {**self.extra, "input": self.input}
         optional = {
             "instructions": self.instructions,
             "previous_response_id": self.previous_response_id,

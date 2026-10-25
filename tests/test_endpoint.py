@@ -123,6 +123,11 @@ class EndpointTests(unittest.TestCase):
         )
         self.assertNotIn("abc123", repr(tool))
 
+    def test_extra_fields_are_sent_at_the_top_level(self):
+        Stub.routes[INVOKE_PATH] = json_route(200, ANSWER)
+        self.client().responses(ResponsesRequest(input="Hi", extra={"seed": 7, "reasoning": {"effort": "low"}}))
+        self.assertEqual(Stub.seen[0]["body"], {"input": "Hi", "seed": 7, "reasoning": {"effort": "low"}})
+
     def test_responses_continues_with_previous_response_id(self):
         Stub.routes[INVOKE_PATH] = json_route(200, {**ANSWER, "responseId": "resp_2"})
         answer = self.client().responses(ResponsesRequest(input="And this one?", previous_response_id="resp_1"))
