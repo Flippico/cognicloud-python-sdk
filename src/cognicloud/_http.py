@@ -75,3 +75,30 @@ def _api_error(status: int, raw: bytes) -> CogniCloudError:
     code = body.get("error") if isinstance(body.get("error"), str) else "http_error"
     message = body.get("message") if isinstance(body.get("message"), str) else "The request failed."
     return CogniCloudError(status, code, message)
+
+
+def open_stream(
+    config: HttpConfig,
+    method: str,
+    path: str,
+    headers: dict[str, str],
+    body: Optional[Any] = None,
+) -> Any:
+    """Opens a streamed call and returns the response to read as it arrives. Never retried, and the timeout bounds each
+    read rather than the whole stream, because a stream may run for minutes."""
+    url = config.base_url.rstrip("/") + path
+    payload = None if body is None else json.dumps(body).encode("utf-8")
+    all_headers = {"accept": "text/event-stream", "accept-language": config.locale, **headers}
+    if payload is not None:
+        all_headers["content-type"] = "application/json"
+    http_request = urllib.request.Request(url, data=payload, method=method, headers=all_headers)
+    try:
+        return urllib.request.urlopen(http_request, timeout=config.timeout)
+    except urllib.error.HTTPError as error:
+        raise _api_error(error.code, error.read()) from None
+    except (TimeoutError, socket.timeout):
+        raise CogniCloudError(0, "timeout", "The request timed out.") from None
+    except urllib.error.URLError as error:
+        if isinstance(error.reason, (TimeoutError, socket.timeout)):
+            raise CogniCloudError(0, "timeout", "The request timed out.") from None
+        raise CogniCloudError(0, "network_error", "The request could not reach CogniCloud.") from None

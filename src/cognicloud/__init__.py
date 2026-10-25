@@ -10,6 +10,20 @@ from .browser import (
     ProxyCountry,
 )
 from .client import CogniCloud
+from .endpoint import (
+    DeltaEvent,
+    DoneEvent,
+    Embedding,
+    EmbeddingsRequest,
+    EmbeddingsResult,
+    EndpointClient,
+    ErrorEvent,
+    McpTool,
+    ResponseResult,
+    ResponsesRequest,
+    StreamEvent,
+    Usage,
+)
 from .errors import CogniCloudError
 
 __all__ = [
@@ -21,6 +35,18 @@ __all__ = [
     "BrowserSessionsApi",
     "CogniCloud",
     "CogniCloudError",
+    "DeltaEvent",
+    "DoneEvent",
+    "Embedding",
+    "EmbeddingsRequest",
+    "EmbeddingsResult",
+    "EndpointClient",
+    "ErrorEvent",
+    "McpTool",
     "ProxyCountry",
+    "ResponseResult",
+    "ResponsesRequest",
+    "StreamEvent",
+    "Usage",
 ]
-__version__ = "0.4.0"
+__version__ = "0.7.0"

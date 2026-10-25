@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.7.0] - 2026-10-25
+
+Endpoint calls, matching the Rust and JavaScript SDKs:
+
+- `EndpointClient(credential, endpoint_id=..., tenant=..., base_url=...)` or `EndpointClient(credential, url=...)` with the URL CogniCloud issued.
+- `invoke(body)`, `responses(ResponsesRequest)` with MCP tools by label, `instructions`, `tool_choice` and `previous_response_id`, and `embeddings(EmbeddingsRequest)`.
+- `stream(body)` and `stream_responses(request)` yield `DeltaEvent`, then one `DoneEvent` or `ErrorEvent`. The call is opened before `stream` returns, so refusals raise first. Streams are never retried.
+- The `ResponseResult` and `EmbeddingsResult` types, and `McpTool`.
+
 ## [0.4.0] - 2026-10-24
 
 First release. Browser sessions:

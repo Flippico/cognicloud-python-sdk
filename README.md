@@ -27,6 +27,43 @@ cc.browser.sessions.stop(session.id)
 - `sessions.list()` returns `items` and `concurrency` (`active`, `limit`). A start beyond the limit raises `CogniCloudError` with `status == 429` and `code == "concurrency_limit"`.
 - Proxy countries, profiles, screen sizes, captcha solving and recording are not available yet. `browser.countries()` and `browser.profiles()` return empty lists.
 
+## Call an endpoint
+
+```python
+import os
+from cognicloud import EndpointClient, ResponsesRequest, McpTool, EmbeddingsRequest, DeltaEvent, DoneEvent, ErrorEvent
+
+endpoint = EndpointClient(os.environ["COGNICLOUD_KEY"], endpoint_id=os.environ["COGNICLOUD_ENDPOINT_ID"])
+
+answer = endpoint.responses(
+    ResponsesRequest(
+        input="Is this invoice valid?",
+        instructions="Check invoices.",
+        tools=[McpTool("ksef", allowed_tools=["validate_invoice_xml"])],
+        tool_choice="required",
+    )
+)
+next_answer = endpoint.responses(ResponsesRequest("And this one?", previous_response_id=answer.response_id))
+
+vectors = endpoint.embeddings(EmbeddingsRequest(["first text", "second text"], dimensions=256))
+```
+
+`responses` names an MCP server by its label, which the gateway has configured; you never send its address or credentials. The answer's `response_id` continues the conversation on the same endpoint, and `output_items` holds the tool calls. `embeddings` needs an endpoint whose deployment is an embedding model, and returns one vector per input.
+
+## Streaming
+
+```python
+for event in endpoint.stream({"messages": [{"role": "user", "content": "Write a haiku."}]}):
+    if isinstance(event, DeltaEvent):
+        print(event.text, end="")
+    elif isinstance(event, DoneEvent):
+        print(f"\n{event.answer.usage.total_tokens} tokens")
+    elif isinstance(event, ErrorEvent):
+        print(f"{event.code}: {event.message}")
+```
+
+`stream` opens the call before it returns, so a refusal raises immediately, before any event. Each event is a `DeltaEvent` (`text`), then one `DoneEvent` (`answer`), or one `ErrorEvent` (`code`, `message`). Streams are not retried and have no total timeout; the gateway ends them at five minutes. Stop early by closing the iterator; the gateway still settles the call.
+
 ## Errors
 
 Every failed request raises `CogniCloudError` with `status` (the HTTP status, `0` when no answer came back), `code` (CogniCloud's stable error code, or a local one such as `timeout` or `network_error`) and `message`.
