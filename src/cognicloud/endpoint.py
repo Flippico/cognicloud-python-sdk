@@ -17,13 +17,24 @@ DEFAULT_GATEWAY_BASE_URL = "https://cognicloud.flippi.co/api/v1/ai-gateway"
 
 @dataclass(frozen=True)
 class McpTool:
-    """An MCP server the gateway has configured, named by its label. The gateway supplies its address and credentials."""
+    """An MCP server a Responses call may use.
+
+    Name the server with `server_url` and its bearer token with `bearer_token`. The gateway checks the address (https,
+    no credentials or fragment), sets approval to `never`, and passes both to the provider. A tool with only
+    `server_label` names a server the gateway is configured with.
+    """
 
     server_label: str
     allowed_tools: Optional[list[str]] = None
+    server_url: Optional[str] = None
+    bearer_token: Optional[str] = field(default=None, repr=False)
 
     def to_json(self) -> dict[str, Any]:
         body: dict[str, Any] = {"type": "mcp", "server_label": self.server_label}
+        if self.server_url is not None:
+            body["server_url"] = self.server_url
+        if self.bearer_token is not None:
+            body["headers"] = {"Authorization": f"Bearer {self.bearer_token}"}
         if self.allowed_tools is not None:
             body["allowed_tools"] = self.allowed_tools
         return body

@@ -48,7 +48,7 @@ next_answer = endpoint.responses(ResponsesRequest("And this one?", previous_resp
 vectors = endpoint.embeddings(EmbeddingsRequest(["first text", "second text"], dimensions=256))
 ```
 
-`responses` names an MCP server by its label, which the gateway has configured; you never send its address or credentials. The answer's `response_id` continues the conversation on the same endpoint, and `output_items` holds the tool calls. `embeddings` needs an endpoint whose deployment is an embedding model, and returns one vector per input.
+`McpTool` names an MCP server with `server_url` and `bearer_token`. The gateway checks the address (https, with no credentials or fragment) and passes both to the provider. A tool with only `server_label` names a server the gateway is configured with. The answer's `response_id` continues the conversation on the same endpoint, and `output_items` holds the tool calls. `embeddings` needs an endpoint whose deployment is an embedding model, and returns one vector per input.
 
 ## Streaming
 

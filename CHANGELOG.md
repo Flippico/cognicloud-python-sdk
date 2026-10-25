@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.8.0] - 2026-10-25
+
+- `McpTool(label, server_url=..., bearer_token=...)` names an MCP server's address and bearer token. The gateway checks them and passes them to the provider. The token is hidden in `repr`. A tool with only a label still names a server the gateway is configured with.
+
 ## [0.7.0] - 2026-10-25
 
 Endpoint calls, matching the Rust and JavaScript SDKs:

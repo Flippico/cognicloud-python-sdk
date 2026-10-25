@@ -105,6 +105,24 @@ class EndpointTests(unittest.TestCase):
             },
         )
 
+    def test_a_caller_server_and_its_token_are_sent_and_the_token_is_hidden_in_repr(self):
+        Stub.routes[INVOKE_PATH] = json_route(200, ANSWER)
+        tool = McpTool("ksef", allowed_tools=["validate_invoice_xml"], server_url="https://ksef-api.flippi.co/mcp/v1", bearer_token="abc123")
+        self.client().responses(ResponsesRequest(input="Check this invoice.", tools=[tool]))
+        self.assertEqual(
+            Stub.seen[0]["body"]["tools"],
+            [
+                {
+                    "type": "mcp",
+                    "server_label": "ksef",
+                    "server_url": "https://ksef-api.flippi.co/mcp/v1",
+                    "headers": {"Authorization": "Bearer abc123"},
+                    "allowed_tools": ["validate_invoice_xml"],
+                }
+            ],
+        )
+        self.assertNotIn("abc123", repr(tool))
+
     def test_responses_continues_with_previous_response_id(self):
         Stub.routes[INVOKE_PATH] = json_route(200, {**ANSWER, "responseId": "resp_2"})
         answer = self.client().responses(ResponsesRequest(input="And this one?", previous_response_id="resp_1"))
