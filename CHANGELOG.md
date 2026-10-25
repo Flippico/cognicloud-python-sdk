@@ -10,12 +10,16 @@
 
 ## [0.7.0] - 2026-10-25
 
-Endpoint calls, matching the Rust and JavaScript SDKs:
+- `stream(body)` and `stream_responses(request)` yield `DeltaEvent`, then one `DoneEvent` or `ErrorEvent`. The call is opened before `stream` returns, so refusals raise first. Streams are never retried. A stream that closes early yields `ErrorEvent` with the code `stream_ended`.
+
+## [0.6.0] - 2026-10-24
+
+- `embeddings(EmbeddingsRequest(input, dimensions=...))` returns one vector per input, in input order, and bills the prompt tokens. `EmbeddingsResult` and `Embedding` are exported.
+
+## [0.5.0] - 2026-10-24
 
 - `EndpointClient(credential, endpoint_id=..., tenant=..., base_url=...)` or `EndpointClient(credential, url=...)` with the URL CogniCloud issued.
-- `invoke(body)`, `responses(ResponsesRequest)` with MCP tools by label, `instructions`, `tool_choice` and `previous_response_id`, and `embeddings(EmbeddingsRequest)`.
-- `stream(body)` and `stream_responses(request)` yield `DeltaEvent`, then one `DoneEvent` or `ErrorEvent`. The call is opened before `stream` returns, so refusals raise first. Streams are never retried.
-- The `ResponseResult` and `EmbeddingsResult` types, and `McpTool`.
+- `invoke(body)` and `responses(ResponsesRequest)`, with MCP tools by label, `instructions`, `tool_choice` and `previous_response_id`. `ResponseResult` carries `response_id` and `output_items`.
 
 ## [0.4.0] - 2026-10-24
 
