@@ -1,0 +1,40 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  pypi:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Publish the version in pyproject.toml if PyPI does not have it
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+        run: |
+          if [ -z "$TWINE_PASSWORD" ]; then
+            echo "PYPI_API_TOKEN is not set; nothing published."
+            exit 0
+          fi
+          version=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
+          code=$(curl -s -o /dev/null -w "%{http_code}" "https://pypi.org/pypi/cognicloud/$version/json")
+          if [ "$code" = "200" ]; then
+            echo "cognicloud $version is already on PyPI."
+            exit 0
+          fi
+          python -m pip install build twine
+          PYTHONPATH=src python -m unittest discover -s tests
+          rm -rf dist && python -m build
+          python -m twine check dist/*
+          python -m twine upload dist/*
+          git tag "v$version"
+          git push origin "v$version"
