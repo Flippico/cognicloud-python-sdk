@@ -155,3 +155,11 @@ class BrowserTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TokenRequiredTest(unittest.TestCase):
+    def test_refuses_a_missing_or_blank_token_before_any_request(self):
+        for token in ["", "   ", None]:
+            with self.subTest(token=token), self.assertRaises(CogniCloudError) as raised:
+                CogniCloud(token)
+            self.assertEqual(raised.exception.code, "missing_token")
