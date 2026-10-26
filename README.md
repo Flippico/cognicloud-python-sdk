@@ -74,7 +74,7 @@ Every failed request raises `CogniCloudError` with `status` (the HTTP status, `0
 
 | Option | Default | |
 | --- | --- | --- |
-| `token` | required | The signed-in person's Amadeus session token. |
+| `token` | required | The account the calls act as: the signed-in person's Amadeus session token, or a browser key for browser calls. A missing or blank token raises `CogniCloudError` with code `missing_token` when the client is created. |
 | `tenant` | `"cognicloud"` | The workspace, sent as `tenant_id`. The platform workspace is open to every signed-in user. |
 | `locale` | `"en"` | `Accept-Language` for localised responses. |
 | `timeout` | `30.0` | Seconds per request. |
