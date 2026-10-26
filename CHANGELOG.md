@@ -1,8 +1,9 @@
 # Changelog
 
-## [Unreleased]
+## [0.10.1] - 2026-10-26
 
 - A missing or blank `token` raises `CogniCloudError` with code `missing_token` when the client is created, before any request is made.
+- Docs: a browser key can be used as the token; the token and workspace are described in each README.
 
 ## [0.10.0] - 2026-10-26
 
