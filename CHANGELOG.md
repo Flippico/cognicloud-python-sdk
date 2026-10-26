@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.11.0] - 2026-10-26
+
+- `CogniCloudBrowser(key)` uses the browser product with a browser key alone: no Amadeus token and no tenant. A browser key names its workspace.
+
 ## [0.10.1] - 2026-10-26
 
 - A missing or blank `token` raises `CogniCloudError` with code `missing_token` when the client is created, before any request is made.

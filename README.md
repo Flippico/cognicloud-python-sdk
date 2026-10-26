@@ -14,6 +14,17 @@ pip install "git+https://github.com/Flippico/cognicloud-python-sdk.git"
 
 Browser calls accept the signed-in person's token, or a browser key. Create a key in the dashboard under **Browser → API keys** and pass it as the token. A key keeps working after its owner signs out. Keys cannot be created through the SDK or the API.
 
+Use the browser product with a browser key alone. The key names its workspace, so no Amadeus token or tenant is needed:
+
+```python
+import os
+
+from cognicloud import CogniCloudBrowser
+
+browser = CogniCloudBrowser(os.environ["COGNICLOUD_BROWSER_KEY"])
+session = browser.browser.sessions.create(timeout_minutes=15)
+```
+
 ```python
 from cognicloud import CogniCloud
 

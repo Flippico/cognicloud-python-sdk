@@ -163,3 +163,34 @@ class TokenRequiredTest(unittest.TestCase):
             with self.subTest(token=token), self.assertRaises(CogniCloudError) as raised:
                 CogniCloud(token)
             self.assertEqual(raised.exception.code, "missing_token")
+
+
+class BrowserKeyClientTest(unittest.TestCase):
+    def setUp(self):
+        Stub.routes = {}
+        Stub.seen = []
+        self.server = HTTPServer(("127.0.0.1", 0), Stub)
+        threading.Thread(target=self.server.serve_forever, daemon=True).start()
+        self.base = f"http://127.0.0.1:{self.server.server_address[1]}/v1/browser"
+
+    def tearDown(self):
+        self.server.shutdown()
+        self.server.server_close()
+
+    def test_refuses_a_missing_or_blank_key_before_any_request(self):
+        from cognicloud import CogniCloudBrowser
+
+        for key in ["", "   ", None]:
+            with self.subTest(key=key), self.assertRaises(CogniCloudError) as raised:
+                CogniCloudBrowser(key)
+            self.assertEqual(raised.exception.code, "missing_key")
+
+    def test_sends_only_the_key_with_no_tenant_header(self):
+        from cognicloud import CogniCloudBrowser
+
+        Stub.routes[("GET", "/v1/browser/profiles")] = (200, [])
+        browser = CogniCloudBrowser("cgb_abc", browser_base_url=self.base).browser
+        self.assertEqual(browser.profiles(), [])
+        request = Stub.seen[0]
+        self.assertEqual(request["headers"]["authorization"], "Bearer cgb_abc")
+        self.assertNotIn("tenant_id", request["headers"])
