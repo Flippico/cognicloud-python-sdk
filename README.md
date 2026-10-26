@@ -25,6 +25,14 @@ browser = CogniCloudBrowser(os.environ["COGNICLOUD_BROWSER_KEY"])
 session = browser.browser.sessions.create(timeout_minutes=15)
 ```
 
+Upload a profile folder packed as a `.tar.gz` (see the app docs for how to pack it), then start a session from it:
+
+```python
+profile = browser.browser.import_profile("Shop account", "shop-profile.tar.gz")
+session = browser.browser.sessions.create(profile_id=profile.id)
+```
+
+
 ```python
 from cognicloud import CogniCloud
 

@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
-from typing import Any, Optional
-from urllib.parse import quote
+from typing import Any, Optional, Union
+from urllib.parse import quote, urlencode
 
 from ._http import HttpConfig, request
 
@@ -175,6 +176,25 @@ class BrowserApi:
         """Proxy countries a session can route through. Empty until proxies are available."""
         data = request(self._config, "GET", "/countries", self._headers)
         return [ProxyCountry(code=item["code"], name=item["name"]) for item in data]
+
+    def import_profile(self, name: str, archive: Union[bytes, str, os.PathLike]) -> BrowserProfile:
+        """Keeps a Chrome profile folder packed as a `.tar.gz`, under `name`, so sessions can start from it.
+
+        `archive` is the file's bytes or its path. Only regular files and folders are accepted, with relative paths, up
+        to 200 MB. Profiles expire after 90 days unused.
+        """
+        data = archive if isinstance(archive, bytes) else open(archive, "rb").read()
+        query = urlencode({"name": name})
+        return BrowserProfile.from_json(
+            request(
+                self._config,
+                "POST",
+                f"/profiles/import?{query}",
+                self._headers,
+                retry=False,
+                raw=(data, "application/gzip"),
+            )
+        )
 
     def profiles(self) -> list[BrowserProfile]:
         """Saved profiles, newest first. Save one with `browser.sessions.save_profile`."""
