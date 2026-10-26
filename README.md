@@ -12,6 +12,8 @@ pip install "git+https://github.com/Flippico/cognicloud-python-sdk.git"
 
 ## Browser sessions
 
+Browser calls accept the signed-in person's token, or a browser key. Create a key in the dashboard under **Browser → API keys** and pass it as the token. A key keeps working after its owner signs out. Keys cannot be created through the SDK or the API.
+
 ```python
 from cognicloud import CogniCloud
 
