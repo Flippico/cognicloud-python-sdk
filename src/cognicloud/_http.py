@@ -28,13 +28,17 @@ def request(
     headers: dict[str, str],
     body: Optional[Any] = None,
     retry: bool = True,
+    raw: Optional[tuple[bytes, str]] = None,
 ) -> Any:
-    """Sends one request and returns the decoded JSON body (None for 204). Retries 429 and 5xx only when `retry` is set."""
+    """Sends one request and returns the decoded JSON body (None for 204). Retries 429 and 5xx only when `retry` is set.
+    `raw` is a body sent as it is, with its content type, instead of JSON."""
     url = config.base_url.rstrip("/") + path
     retries = config.max_retries if retry else 0
     payload = None if body is None else json.dumps(body).encode("utf-8")
     all_headers = {"accept": "application/json", "accept-language": config.locale, **headers}
-    if payload is not None:
+    if raw is not None:
+        payload, all_headers["content-type"] = raw
+    elif payload is not None:
         all_headers["content-type"] = "application/json"
 
     attempt = 0

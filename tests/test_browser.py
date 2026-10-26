@@ -21,6 +21,13 @@ SESSION = {
 }
 
 
+def _decoded(body):
+    try:
+        return json.loads(body) if body else None
+    except ValueError:
+        return body
+
+
 class Stub(BaseHTTPRequestHandler):
     """Answers from `routes[(method, path)]` as (status, body) and records every request."""
 
@@ -35,7 +42,7 @@ class Stub(BaseHTTPRequestHandler):
                 "method": self.command,
                 "path": self.path,
                 "headers": {key.lower(): value for key, value in self.headers.items()},
-                "body": json.loads(body) if body else None,
+                "body": _decoded(body),
             }
         )
         status, payload = Stub.routes.get((self.command, self.path.split("?")[0]), (404, {"error": "not_found", "message": "No route matches this path."}))
@@ -218,3 +225,30 @@ class WindowSizeTest(unittest.TestCase):
         self.assertEqual(session.screen, BrowserScreen(width=1280, height=720))
         self.assertEqual(Stub.seen[0]["body"], {"timeoutMinutes": 15, "screen": {"width": 1280, "height": 720}})
 
+
+
+class ProfileUploadTest(unittest.TestCase):
+    def setUp(self):
+        Stub.routes = {}
+        Stub.seen = []
+        self.server = HTTPServer(("127.0.0.1", 0), Stub)
+        threading.Thread(target=self.server.serve_forever, daemon=True).start()
+        self.base = f"http://127.0.0.1:{self.server.server_address[1]}/v1/browser"
+
+    def tearDown(self):
+        self.server.shutdown()
+        self.server.server_close()
+
+    def test_sends_the_archive_as_the_raw_body_named_in_the_query(self):
+        from cognicloud import CogniCloudBrowser
+
+        profile = {
+            "id": "5f1c9a2e", "name": "Shop", "sizeBytes": 3,
+            "createdAt": "2026-10-21T10:20:00Z", "lastUsedAt": None, "expiresAt": "2027-01-19T10:20:00Z",
+        }
+        Stub.routes[("POST", "/v1/browser/profiles/import")] = (201, profile)
+        browser = CogniCloudBrowser("cgb_abc", browser_base_url=self.base).browser
+        created = browser.import_profile("Shop account", bytes([31, 139, 8]))
+        self.assertEqual(created.id, "5f1c9a2e")
+        self.assertEqual(Stub.seen[0]["path"], "/v1/browser/profiles/import?name=Shop+account")
+        self.assertEqual(Stub.seen[0]["headers"]["content-type"], "application/gzip")
