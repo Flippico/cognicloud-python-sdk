@@ -12,6 +12,8 @@ pip install "git+https://github.com/Flippico/cognicloud-python-sdk.git"
 
 ## Browser sessions
 
+Browser calls accept the signed-in person's token, or a browser key. Create a key in the dashboard under **Browser → API keys** and pass it as the token. A key keeps working after its owner signs out. Keys cannot be created through the SDK or the API.
+
 ```python
 from cognicloud import CogniCloud
 
@@ -74,7 +76,7 @@ Every failed request raises `CogniCloudError` with `status` (the HTTP status, `0
 
 | Option | Default | |
 | --- | --- | --- |
-| `token` | required | The signed-in person's Amadeus session token. |
+| `token` | required | The account the calls act as: the signed-in person's Amadeus session token, or a browser key for browser calls. A missing or blank token raises `CogniCloudError` with code `missing_token` when the client is created. |
 | `tenant` | `"cognicloud"` | The workspace, sent as `tenant_id`. The platform workspace is open to every signed-in user. |
 | `locale` | `"en"` | `Accept-Language` for localised responses. |
 | `timeout` | `30.0` | Seconds per request. |

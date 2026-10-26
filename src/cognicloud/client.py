@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from ._http import HttpConfig
+from .errors import CogniCloudError
 from .browser import BrowserApi
 
 DEFAULT_TENANT = "cognicloud"
@@ -26,6 +27,12 @@ class CogniCloud:
         max_retries: int = 2,
         browser_base_url: str = DEFAULT_BROWSER_BASE_URL,
     ) -> None:
+        if not isinstance(token, str) or token.strip() == "":
+            raise CogniCloudError(
+                0,
+                "missing_token",
+                "A token is required: pass the signed-in person's token, or a browser key for browser calls.",
+            )
         config = HttpConfig(base_url=browser_base_url, locale=locale, timeout=timeout, max_retries=max_retries)
         headers = {"authorization": f"Bearer {token}", "tenant_id": tenant}
         self.browser = BrowserApi(config, headers)
