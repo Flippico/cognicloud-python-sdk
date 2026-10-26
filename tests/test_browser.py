@@ -194,3 +194,27 @@ class BrowserKeyClientTest(unittest.TestCase):
         request = Stub.seen[0]
         self.assertEqual(request["headers"]["authorization"], "Bearer cgb_abc")
         self.assertNotIn("tenant_id", request["headers"])
+
+
+class WindowSizeTest(unittest.TestCase):
+    def setUp(self):
+        Stub.routes = {}
+        Stub.seen = []
+        self.server = HTTPServer(("127.0.0.1", 0), Stub)
+        threading.Thread(target=self.server.serve_forever, daemon=True).start()
+        self.base = f"http://127.0.0.1:{self.server.server_address[1]}/v1/browser"
+
+    def tearDown(self):
+        self.server.shutdown()
+        self.server.server_close()
+
+    def test_sends_a_window_size_and_returns_the_one_the_session_has(self):
+        from cognicloud import BrowserScreen, CogniCloudBrowser
+
+        Stub.routes[("POST", "/v1/browser/sessions")] = (201, dict(SESSION, screen={"width": 1280, "height": 720}))
+        session = CogniCloudBrowser("cgb_abc", browser_base_url=self.base).browser.sessions.create(
+            timeout_minutes=15, screen=BrowserScreen(width=1280, height=720)
+        )
+        self.assertEqual(session.screen, BrowserScreen(width=1280, height=720))
+        self.assertEqual(Stub.seen[0]["body"], {"timeoutMinutes": 15, "screen": {"width": 1280, "height": 720}})
+

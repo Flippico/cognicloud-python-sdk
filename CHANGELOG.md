@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.12.0] - 2026-10-26
+
+- `create(screen=BrowserScreen(width, height))` sets the window size: 320 to 6144 wide, 320 to 3456 high. Chrome starts with it, and the session returns it.
+
 ## [0.11.0] - 2026-10-26
 
 - `CogniCloudBrowser(key)` uses the browser product with a browser key alone: no Amadeus token and no tenant. A browser key names its workspace.

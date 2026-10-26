@@ -7,6 +7,12 @@ from urllib.parse import quote
 from ._http import HttpConfig, request
 
 
+def _screen(data: Optional[dict[str, Any]]) -> Optional[BrowserScreen]:
+    if data is None:
+        return None
+    return BrowserScreen(width=data["width"], height=data["height"])
+
+
 @dataclass(frozen=True)
 class BrowserSession:
     """A session is `active` until it stops; then `cdp_url` and `live_url` are None."""
@@ -19,7 +25,7 @@ class BrowserSession:
     proxy_country_code: Optional[str]
     solve_captchas: bool
     recording: bool
-    screen: Optional[dict[str, int]]
+    screen: Optional[BrowserScreen]
     timeout_at: str
     started_at: str
     finished_at: Optional[str]
@@ -35,11 +41,17 @@ class BrowserSession:
             proxy_country_code=data.get("proxyCountryCode"),
             solve_captchas=bool(data.get("solveCaptchas")),
             recording=bool(data.get("recording")),
-            screen=data.get("screen"),
+            screen=_screen(data.get("screen")),
             timeout_at=data["timeoutAt"],
             started_at=data["startedAt"],
             finished_at=data.get("finishedAt"),
         )
+
+
+@dataclass(frozen=True)
+class BrowserScreen:
+    width: int
+    height: int
 
 
 @dataclass(frozen=True)
@@ -96,17 +108,25 @@ class BrowserSessionsApi:
         self._config = config
         self._headers = headers
 
-    def create(self, timeout_minutes: Optional[int] = None, profile_id: Optional[str] = None) -> BrowserSession:
+    def create(
+        self,
+        timeout_minutes: Optional[int] = None,
+        profile_id: Optional[str] = None,
+        screen: Optional[BrowserScreen] = None,
+    ) -> BrowserSession:
         """Starts a session. Its `cdp_url` and `live_url` carry the session token; treat them as secrets.
 
-        `timeout_minutes` is 1 to 240 and defaults to 15. `profile_id` starts from a saved profile. A start beyond the
-        workspace's limit raises CogniCloudError with status 429 and code `concurrency_limit`.
+        `timeout_minutes` is 1 to 240 and defaults to 15. `profile_id` starts from a saved profile. `screen` is the
+        window size, 320 to 6144 wide and 320 to 3456 high; Chrome starts with it. A start beyond the workspace's limit
+        raises CogniCloudError with status 429 and code `concurrency_limit`.
         """
         body: dict[str, Any] = {}
         if timeout_minutes is not None:
             body["timeoutMinutes"] = timeout_minutes
         if profile_id is not None:
             body["profileId"] = profile_id
+        if screen is not None:
+            body["screen"] = {"width": screen.width, "height": screen.height}
         data = request(self._config, "POST", "/sessions", self._headers, body, retry=False)
         return BrowserSession.from_json(data)
 
