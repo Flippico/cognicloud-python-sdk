@@ -36,3 +36,27 @@ class CogniCloud:
         config = HttpConfig(base_url=browser_base_url, locale=locale, timeout=timeout, max_retries=max_retries)
         headers = {"authorization": f"Bearer {token}", "tenant_id": tenant}
         self.browser = BrowserApi(config, headers)
+
+
+class CogniCloudBrowser:
+    """The browser product alone. `key` is a browser key from the dashboard (Browser → API keys); it names its
+    workspace, so no tenant is sent and no Amadeus token is needed.
+    """
+
+    def __init__(
+        self,
+        key: str,
+        *,
+        locale: str = "en",
+        timeout: float = 30.0,
+        max_retries: int = 2,
+        browser_base_url: str = DEFAULT_BROWSER_BASE_URL,
+    ) -> None:
+        if not isinstance(key, str) or key.strip() == "":
+            raise CogniCloudError(
+                0,
+                "missing_key",
+                "A browser key is required. Create one in the dashboard under Browser → API keys.",
+            )
+        config = HttpConfig(base_url=browser_base_url, locale=locale, timeout=timeout, max_retries=max_retries)
+        self.browser = BrowserApi(config, {"authorization": f"Bearer {key}"})

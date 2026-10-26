@@ -9,7 +9,7 @@ from .browser import (
     BrowserSessionsApi,
     ProxyCountry,
 )
-from .client import CogniCloud
+from .client import CogniCloud, CogniCloudBrowser
 from .endpoint import (
     DeltaEvent,
     DoneEvent,
@@ -34,6 +34,7 @@ __all__ = [
     "BrowserSessionList",
     "BrowserSessionsApi",
     "CogniCloud",
+    "CogniCloudBrowser",
     "CogniCloudError",
     "DeltaEvent",
     "DoneEvent",
@@ -49,4 +50,4 @@ __all__ = [
     "StreamEvent",
     "Usage",
 ]
-__version__ = "0.10.1"
+__version__ = "0.11.0"
