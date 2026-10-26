@@ -72,9 +72,21 @@ class ProxyCountry:
 class BrowserProfile:
     id: str
     name: str
-    cookie_domains: list[str]
-    last_used_at: Optional[str]
+    size_bytes: int
     created_at: str
+    last_used_at: Optional[str]
+    expires_at: str
+
+    @classmethod
+    def from_json(cls, data: dict[str, Any]) -> "BrowserProfile":
+        return cls(
+            id=data["id"],
+            name=data["name"],
+            size_bytes=data["sizeBytes"],
+            created_at=data["createdAt"],
+            last_used_at=data.get("lastUsedAt"),
+            expires_at=data["expiresAt"],
+        )
 
 
 class BrowserSessionsApi:
@@ -84,15 +96,17 @@ class BrowserSessionsApi:
         self._config = config
         self._headers = headers
 
-    def create(self, timeout_minutes: Optional[int] = None) -> BrowserSession:
+    def create(self, timeout_minutes: Optional[int] = None, profile_id: Optional[str] = None) -> BrowserSession:
         """Starts a session. Its `cdp_url` and `live_url` carry the session token; treat them as secrets.
 
-        `timeout_minutes` is 1 to 240 and defaults to 15. A start beyond the workspace's limit raises
-        CogniCloudError with status 429 and code `concurrency_limit`.
+        `timeout_minutes` is 1 to 240 and defaults to 15. `profile_id` starts from a saved profile. A start beyond the
+        workspace's limit raises CogniCloudError with status 429 and code `concurrency_limit`.
         """
         body: dict[str, Any] = {}
         if timeout_minutes is not None:
             body["timeoutMinutes"] = timeout_minutes
+        if profile_id is not None:
+            body["profileId"] = profile_id
         data = request(self._config, "POST", "/sessions", self._headers, body, retry=False)
         return BrowserSession.from_json(data)
 
@@ -104,6 +118,22 @@ class BrowserSessionsApi:
         return BrowserSession.from_json(
             request(self._config, "GET", f"/sessions/{quote(session_id, safe='')}", self._headers)
         )
+
+    def save_profile(self, session_id: str, name: str) -> BrowserProfile:
+        """Closes the session's browser cleanly, keeps its profile under `name` and ends the session.
+
+        Start a session with the returned `id` as `profile_id` to continue from those logins. A profile holds cookies
+        and logins, so keep it private. Names are 1 to 80 characters and unique per person.
+        """
+        data = request(
+            self._config,
+            "POST",
+            f"/sessions/{quote(session_id, safe='')}/profile",
+            self._headers,
+            {"name": name},
+            retry=False,
+        )
+        return BrowserProfile.from_json(data)
 
     def stop(self, session_id: str) -> BrowserSession:
         """Closing the CDP connection does not stop a session; this does."""
@@ -127,15 +157,6 @@ class BrowserApi:
         return [ProxyCountry(code=item["code"], name=item["name"]) for item in data]
 
     def profiles(self) -> list[BrowserProfile]:
-        """Profiles keep cookies between sessions. Empty until profiles are available."""
+        """Saved profiles, newest first. Save one with `browser.sessions.save_profile`."""
         data = request(self._config, "GET", "/profiles", self._headers)
-        return [
-            BrowserProfile(
-                id=item["id"],
-                name=item["name"],
-                cookie_domains=item["cookieDomains"],
-                last_used_at=item.get("lastUsedAt"),
-                created_at=item["createdAt"],
-            )
-            for item in data
-        ]
+        return [BrowserProfile.from_json(item) for item in data]

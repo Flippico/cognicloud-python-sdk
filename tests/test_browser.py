@@ -104,6 +104,26 @@ class BrowserTests(unittest.TestCase):
         self.assertEqual(caught.exception.status, 429)
         self.assertEqual(caught.exception.code, "concurrency_limit")
 
+    def test_saves_a_session_as_a_profile_and_starts_from_it(self):
+        profile = {
+            "id": "5f1c9a2e",
+            "name": "shop login",
+            "sizeBytes": 20480,
+            "createdAt": "2026-10-21T10:20:00Z",
+            "lastUsedAt": None,
+            "expiresAt": "2027-01-19T10:20:00Z",
+        }
+        Stub.routes[("POST", "/v1/browser/sessions/b903c5d0/profile")] = (201, profile)
+        Stub.routes[("POST", "/v1/browser/sessions")] = (201, SESSION)
+        browser = self.client().browser
+        saved = browser.sessions.save_profile("b903c5d0", "shop login")
+        self.assertEqual(saved.id, "5f1c9a2e")
+        self.assertEqual(saved.size_bytes, 20480)
+        self.assertEqual(saved.expires_at, "2027-01-19T10:20:00Z")
+        self.assertEqual(Stub.seen[0]["body"], {"name": "shop login"})
+        browser.sessions.create(profile_id=saved.id)
+        self.assertEqual(Stub.seen[1]["body"], {"profileId": "5f1c9a2e"})
+
     def test_countries_and_profiles_are_empty_until_they_exist(self):
         Stub.routes[("GET", "/v1/browser/countries")] = (200, [])
         Stub.routes[("GET", "/v1/browser/profiles")] = (200, [])

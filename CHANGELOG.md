@@ -1,5 +1,10 @@
 # Changelog
 
+## [Unreleased]
+
+- `browser.sessions.save_profile(session_id, name)` saves a running session as a profile and ends the session. `create(profile_id=...)` starts a session from a saved profile.
+- Breaking: `BrowserProfile` has `size_bytes` and `expires_at` in place of `cookie_domains`.
+
 ## [0.9.0] - 2026-10-25
 
 - `ResponsesRequest(extra={...})` sends any other field to the provider unchanged. The gateway refuses the fields it sets itself (`n`, `best_of`, `background`, `store`, `stream_options`, `prompt`, `conversation`).
