@@ -4,6 +4,7 @@ from .browser import (
     BrowserApi,
     BrowserConcurrency,
     BrowserProfile,
+    BrowserScreen,
     BrowserSession,
     BrowserSessionList,
     BrowserSessionsApi,
@@ -30,6 +31,7 @@ __all__ = [
     "BrowserApi",
     "BrowserConcurrency",
     "BrowserProfile",
+    "BrowserScreen",
     "BrowserSession",
     "BrowserSessionList",
     "BrowserSessionsApi",
@@ -50,4 +52,4 @@ __all__ = [
     "StreamEvent",
     "Usage",
 ]
-__version__ = "0.11.0"
+__version__ = "0.12.0"
