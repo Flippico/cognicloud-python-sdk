@@ -5,9 +5,11 @@ from dataclasses import dataclass
 from ._http import HttpConfig
 from .errors import CogniCloudError
 from .browser import BrowserApi
+from .mail import MailApi
 
 DEFAULT_TENANT = "cognicloud"
 DEFAULT_BROWSER_BASE_URL = "https://cognicloud.flippi.co/api/v1/browser"
+DEFAULT_MAIL_BASE_URL = "https://cognicloud.flippi.co/api/v1/mail"
 
 
 class CogniCloud:
@@ -26,6 +28,7 @@ class CogniCloud:
         timeout: float = 30.0,
         max_retries: int = 2,
         browser_base_url: str = DEFAULT_BROWSER_BASE_URL,
+        mail_base_url: str = DEFAULT_MAIL_BASE_URL,
     ) -> None:
         if not isinstance(token, str) or token.strip() == "":
             raise CogniCloudError(
@@ -36,6 +39,7 @@ class CogniCloud:
         config = HttpConfig(base_url=browser_base_url, locale=locale, timeout=timeout, max_retries=max_retries)
         headers = {"authorization": f"Bearer {token}", "tenant_id": tenant}
         self.browser = BrowserApi(config, headers)
+        self.mail = MailApi(HttpConfig(base_url=mail_base_url, locale=locale, timeout=timeout, max_retries=max_retries), headers)
 
 
 class CogniCloudBrowser:

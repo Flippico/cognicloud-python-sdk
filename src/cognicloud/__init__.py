@@ -26,6 +26,7 @@ from .endpoint import (
     Usage,
 )
 from .errors import CogniCloudError
+from .mail import Mailbox, MailboxList, CreatedMailbox, MailApi, MailConnectionSettings, MailServerEndpoint
 
 __all__ = [
     "BrowserApi",
@@ -38,6 +39,12 @@ __all__ = [
     "CogniCloud",
     "CogniCloudBrowser",
     "CogniCloudError",
+    "CreatedMailbox",
+    "MailApi",
+    "MailConnectionSettings",
+    "MailServerEndpoint",
+    "Mailbox",
+    "MailboxList",
     "DeltaEvent",
     "DoneEvent",
     "Embedding",
@@ -52,4 +59,4 @@ __all__ = [
     "StreamEvent",
     "Usage",
 ]
-__version__ = "0.13.0"
+__version__ = "0.14.0"
