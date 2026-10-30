@@ -101,6 +101,7 @@ Every failed request raises `CogniCloudError` with `status` (the HTTP status, `0
 | `timeout` | `30.0` | Seconds per request. |
 | `max_retries` | `2` | For `429` and `5xx`, on reads only. Starts and stops are never retried. |
 | `browser_base_url` | `https://cognicloud.dev/api/v1/browser` | Point at another environment. |
+| `mail_base_url` | `https://cognicloud.dev/api/v1/mail` | Point at another environment. |
 
 ## Development
 
