@@ -1,5 +1,10 @@
 # Changelog
 
+## [Unreleased]
+
+### Documentation
+- The README documents the mail base URL option and its default, `https://cognicloud.dev/api/v1/mail`.
+
 ## [0.15.0] - 2026-10-30
 
 ### Changed
