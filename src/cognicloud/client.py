@@ -8,8 +8,8 @@ from .browser import BrowserApi
 from .mail import MailApi
 
 DEFAULT_TENANT = "cognicloud"
-DEFAULT_BROWSER_BASE_URL = "https://cognicloud.flippi.co/api/v1/browser"
-DEFAULT_MAIL_BASE_URL = "https://cognicloud.flippi.co/api/v1/mail"
+DEFAULT_BROWSER_BASE_URL = "https://cognicloud.dev/api/v1/browser"
+DEFAULT_MAIL_BASE_URL = "https://cognicloud.dev/api/v1/mail"
 
 
 class CogniCloud:

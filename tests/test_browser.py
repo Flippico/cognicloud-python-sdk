@@ -8,8 +8,8 @@ from cognicloud import CogniCloud, CogniCloudError
 SESSION = {
     "id": "b903c5d0",
     "status": "active",
-    "cdpUrl": "wss://cognicloud.flippi.co/api/v1/browser/sessions/b903c5d0/cdp?token=t",
-    "liveUrl": "https://cognicloud.flippi.co/api/v1/browser/sessions/b903c5d0/live?token=t",
+    "cdpUrl": "wss://cognicloud.dev/api/v1/browser/sessions/b903c5d0/cdp?token=t",
+    "liveUrl": "https://cognicloud.dev/api/v1/browser/sessions/b903c5d0/live?token=t",
     "profileId": None,
     "proxyCountryCode": None,
     "solveCaptchas": False,

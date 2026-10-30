@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.15.0] - 2026-10-30
+
+### Changed
+- The default service URLs are on `https://cognicloud.dev`: `https://cognicloud.dev/api/v1/ai-gateway`, `https://cognicloud.dev/api/v1/browser` and `https://cognicloud.dev/api/v1/mail`, instead of `cognicloud.flippi.co`. Set the base URL options to keep using the old host.
+
 ## [0.14.0] - 2026-10-29
 
 - `client.mail` manages mailboxes on the Flippico mail server: `create(local_part)` returns the generated password once, `list`, `get`, `delete`, `rotate_password`, and `connection_settings`. The `mail_base_url` option points it at another environment.

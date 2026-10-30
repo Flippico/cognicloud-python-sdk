@@ -12,7 +12,7 @@ from ._sse import Record, records
 from .errors import CogniCloudError
 
 DEFAULT_TENANT = "cognicloud"
-DEFAULT_GATEWAY_BASE_URL = "https://cognicloud.flippi.co/api/v1/ai-gateway"
+DEFAULT_GATEWAY_BASE_URL = "https://cognicloud.dev/api/v1/ai-gateway"
 
 
 @dataclass(frozen=True)

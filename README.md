@@ -100,7 +100,7 @@ Every failed request raises `CogniCloudError` with `status` (the HTTP status, `0
 | `locale` | `"en"` | `Accept-Language` for localised responses. |
 | `timeout` | `30.0` | Seconds per request. |
 | `max_retries` | `2` | For `429` and `5xx`, on reads only. Starts and stops are never retried. |
-| `browser_base_url` | `https://cognicloud.flippi.co/api/v1/browser` | Point at another environment. |
+| `browser_base_url` | `https://cognicloud.dev/api/v1/browser` | Point at another environment. |
 
 ## Development
 
