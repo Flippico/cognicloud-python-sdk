@@ -48,6 +48,22 @@ cc.browser.sessions.stop(session.id)
 - `sessions.list()` returns `items` and `concurrency` (`active`, `limit`). A start beyond the limit raises `CogniCloudError` with `status == 429` and `code == "concurrency_limit"`.
 - Proxy countries, profiles, screen sizes, captcha solving and recording are not available yet. `browser.countries()` and `browser.profiles()` return empty lists.
 
+## Mail
+
+Mailboxes on the Flippico mail server. The token is a signed-in person's token or a mail key (`cgm_...`). The password is returned once; store it.
+
+```python
+created = cc.mail.create("support")
+settings = cc.mail.connection_settings()  # IMAP and SMTP hosts, and default_domain
+
+# Your own domain: add it, publish domain.records at your DNS provider, then verify.
+domain = cc.mail.domains.add("yourcompany.com")
+cc.mail.domains.verify(domain.id)
+cc.mail.create("ceo", domain="yourcompany.com")
+```
+
+`mail.list`, `get`, `rotate_password` and `delete` manage mailboxes; `mail.domains.list`, `get` and `delete` manage domains. Adding, verifying and deleting domains need a signed-in person's token.
+
 ## Call an endpoint
 
 ```python
