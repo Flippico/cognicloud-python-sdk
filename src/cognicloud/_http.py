@@ -78,7 +78,8 @@ def _api_error(status: int, raw: bytes) -> CogniCloudError:
         body = {}
     code = body.get("error") if isinstance(body.get("error"), str) else "http_error"
     message = body.get("message") if isinstance(body.get("message"), str) else "The request failed."
-    return CogniCloudError(status, code, message)
+    query_code = body.get("code") if isinstance(body.get("code"), str) else None
+    return CogniCloudError(status, code, message, query_code)
 
 
 def open_stream(

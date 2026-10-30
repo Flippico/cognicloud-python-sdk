@@ -10,7 +10,24 @@ from .browser import (
     BrowserSessionsApi,
     ProxyCountry,
 )
-from .client import CogniCloud, CogniCloudBrowser
+from .client import CogniCloud, CogniCloudBrowser, CogniCloudDatabase
+from .database import (
+    DatabaseAction,
+    DatabaseActionList,
+    DatabaseApi,
+    DatabaseDataApi,
+    DatabaseKey,
+    DatabaseKeysApi,
+    DatabaseTable,
+    HostedDatabase,
+    QueryResult,
+    ResultColumn,
+    SelectQuery,
+    Statement,
+    TableApi,
+    TableColumn,
+    WriteQuery,
+)
 from .endpoint import (
     DeltaEvent,
     DoneEvent,
@@ -48,8 +65,24 @@ __all__ = [
     "BrowserSessionsApi",
     "CogniCloud",
     "CogniCloudBrowser",
+    "CogniCloudDatabase",
     "CogniCloudError",
     "CreatedMailbox",
+    "DatabaseAction",
+    "DatabaseActionList",
+    "DatabaseApi",
+    "DatabaseDataApi",
+    "DatabaseKey",
+    "DatabaseKeysApi",
+    "DatabaseTable",
+    "HostedDatabase",
+    "QueryResult",
+    "ResultColumn",
+    "SelectQuery",
+    "Statement",
+    "TableApi",
+    "TableColumn",
+    "WriteQuery",
     "MailApi",
     "MailConnectionSettings",
     "MailDnsRecord",
@@ -72,4 +105,4 @@ __all__ = [
     "StreamEvent",
     "Usage",
 ]
-__version__ = "0.16.0"
+__version__ = "0.17.0"

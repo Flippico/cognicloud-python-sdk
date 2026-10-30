@@ -64,6 +64,44 @@ cc.mail.create("ceo", domain="yourcompany.com")
 
 `mail.list`, `get`, `rotate_password` and `delete` manage mailboxes; `mail.domains.list`, `get` and `delete` manage domains. Adding, verifying and deleting domains need a signed-in person's token.
 
+## Database
+
+Hosted Postgres. A signed-in person creates databases; a database key (`cgd_...`) from the dashboard queries one of them and needs nothing else. A `read` key can only read. A `write` key runs as the database owner.
+
+```python
+import os
+
+from cognicloud import CogniCloud, CogniCloudDatabase, Statement
+
+cc = CogniCloud(session_token)
+database = cc.database.create("Orders")
+
+db = CogniCloudDatabase(os.environ["COGNICLOUD_DATABASE_KEY"])
+
+db.query("CREATE TABLE orders (id serial PRIMARY KEY, email text, total numeric)")
+rows = db.query("SELECT * FROM orders WHERE total > $1", [100]).rows
+
+db.table("orders").insert({"email": "a@example.com", "total": "19.90"})
+paid = db.table("orders").select("id", "email").gt("total", 10).order("id", desc=True).limit(20).execute()
+db.table("orders").update({"total": "0"}).eq("id", 1).execute()
+db.table("orders").delete().eq("id", 1).execute()
+
+db.transaction([
+    Statement("UPDATE accounts SET balance = balance - $1 WHERE id = $2", [10, 1]),
+    Statement("UPDATE accounts SET balance = balance + $1 WHERE id = $2", [10, 2]),
+])
+tables = db.tables()
+```
+
+- Filters are `eq`, `neq`, `gt`, `gte`, `lt`, `lte`, `like`, `ilike`, `is_` and `in_`. `update` and `delete` need at least one; to change every row, use `query`.
+- `select`, `update` and `delete` run on `execute()`. `insert` runs at once.
+- A result has `rows`, `columns`, `row_count` and `truncated`. One request stops after 15 seconds and returns at most 1,000 rows and 5 MB.
+- `numeric` values, and `bigint` values beyond 2^53, come back as strings, so nothing is rounded. `bytea` comes back as base64.
+- A failed statement raises `CogniCloudError` with `code` `query_failed` and `query_code`: a Postgres SQLSTATE such as `23505`, or `query_timeout`.
+- `query` and `transaction`, inserts, updates and deletes are never retried, because they may change data.
+
+`cc.database.list`, `get` and `delete` manage databases, `cc.database.keys.list` and `revoke` manage keys, and `cc.database.actions` lists what was done. Keys are created in the dashboard.
+
 ## Call an endpoint
 
 ```python
@@ -118,6 +156,7 @@ Every failed request raises `CogniCloudError` with `status` (the HTTP status, `0
 | `max_retries` | `2` | For `429` and `5xx`, on reads only. Starts and stops are never retried. |
 | `browser_base_url` | `https://cognicloud.dev/api/v1/browser` | Point at another environment. |
 | `mail_base_url` | `https://cognicloud.dev/api/v1/mail` | Point at another environment. |
+| `database_base_url` | `https://cognicloud.dev/api/v1/database` | Point at another environment. |
 
 ## Development
 
