@@ -322,6 +322,18 @@ class DatabaseApi:
         """Deletes the database, all its data and its keys. This cannot be undone."""
         request(self._config, "DELETE", f"/databases/{quote(database_id, safe='')}", self._headers, retry=False)
 
+    def query(self, database_id: str, sql: str, params: Sequence[Any] = ()) -> QueryResult:
+        """Runs one SQL statement in your own database as its owner, with `$1`, `$2` for `params`. It has the same
+        limits as a key. Never retried, because it may change data."""
+        path = f"/databases/{quote(database_id, safe='')}/query"
+        body = {"sql": sql, "params": list(params)}
+        return QueryResult.from_json(request(self._config, "POST", path, self._headers, body, retry=False))
+
+    def tables(self, database_id: str) -> list[DatabaseTable]:
+        """Tables and views in the database's `public` schema."""
+        data = request(self._config, "GET", f"/databases/{quote(database_id, safe='')}/tables", self._headers)
+        return [DatabaseTable.from_json(item) for item in data["tables"]]
+
     def actions(self, limit: Optional[int] = None, cursor: Optional[str] = None) -> DatabaseActionList:
         """Creating and deleting databases and keys, newest first. Queries are not listed."""
         query = {key: value for key, value in (("limit", limit), ("cursor", cursor)) if value is not None}

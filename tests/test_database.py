@@ -162,6 +162,23 @@ class DatabaseTest(unittest.TestCase):
         self.assertEqual(Stub.seen[0]["headers"]["authorization"], "Bearer session")
         self.assertEqual(Stub.seen[0]["headers"]["tenant_id"], "acme")
 
+    def test_runs_sql_and_lists_tables_as_the_owner(self):
+        Stub.routes[("POST", f"{BASE}/databases/db1/query")] = (200, RESULT)
+        Stub.routes[("GET", f"{BASE}/databases/db1/tables")] = (200, {"tables": [{"name": "orders", "columns": []}]})
+        database = self.client().database
+        value = "a078e7865b1073c4d2c1eaa92a9b5507"
+        self.assertEqual(database.query("db1", "SELECT id FROM orders WHERE id = $1", [value]).row_count, 1)
+        self.assertEqual(database.tables("db1")[0].name, "orders")
+        self.assertEqual(Stub.seen[0]["body"], {"sql": "SELECT id FROM orders WHERE id = $1", "params": [value]})
+        self.assertEqual(Stub.seen[0]["headers"]["authorization"], "Bearer session")
+
+    def test_does_not_repeat_an_owner_query(self):
+        Stub.routes[("POST", f"{BASE}/databases/db1/query")] = (503, {"error": "service_unavailable", "message": "No."})
+        client = CogniCloud("session", database_base_url=self.base, max_retries=2)
+        with self.assertRaises(CogniCloudError):
+            client.database.query("db1", "DELETE FROM orders")
+        self.assertEqual(len(Stub.seen), 1)
+
     def test_lists_and_revokes_keys_and_pages_through_actions(self):
         key = {
             "id": "key1",

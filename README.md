@@ -100,6 +100,14 @@ tables = db.tables()
 - A failed statement raises `CogniCloudError` with `code` `query_failed` and `query_code`: a Postgres SQLSTATE such as `23505`, or `query_timeout`.
 - `query` and `transaction`, inserts, updates and deletes are never retried, because they may change data.
 
+Pass values as `params`, never inside the SQL. They need no quotes and cannot break the statement:
+
+```python
+db.query("INSERT INTO members (id, user_id) VALUES ($1, $2)", [member_id, user_id])
+```
+
+A signed-in person can run SQL in their own database without a key: `cc.database.query(database.id, sql, params)` and `cc.database.tables(database.id)`.
+
 `cc.database.list`, `get` and `delete` manage databases, `cc.database.keys.list` and `revoke` manage keys, and `cc.database.actions` lists what was done. Keys are created in the dashboard.
 
 ## Call an endpoint
