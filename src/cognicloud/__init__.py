@@ -54,8 +54,11 @@ from .mail import (
     MailboxList,
     MailServerEndpoint,
 )
+from .web_builder import Application, WebBuilderApi
 
 __all__ = [
+    "Application",
+    "WebBuilderApi",
     "BrowserApi",
     "BrowserConcurrency",
     "BrowserProfile",
@@ -105,4 +108,4 @@ __all__ = [
     "StreamEvent",
     "Usage",
 ]
-__version__ = "0.18.0"
+__version__ = "0.19.0"

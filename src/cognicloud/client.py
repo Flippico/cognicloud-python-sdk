@@ -7,11 +7,13 @@ from .errors import CogniCloudError
 from .browser import BrowserApi
 from .database import DatabaseApi, DatabaseDataApi
 from .mail import MailApi
+from .web_builder import WebBuilderApi
 
 DEFAULT_TENANT = "cognicloud"
 DEFAULT_BROWSER_BASE_URL = "https://cognicloud.dev/api/v1/browser"
 DEFAULT_MAIL_BASE_URL = "https://cognicloud.dev/api/v1/mail"
 DEFAULT_DATABASE_BASE_URL = "https://cognicloud.dev/api/v1/database"
+DEFAULT_WEB_BUILDER_BASE_URL = "https://cognicloud.dev/api/v1/web-builder"
 
 
 class CogniCloud:
@@ -32,6 +34,7 @@ class CogniCloud:
         browser_base_url: str = DEFAULT_BROWSER_BASE_URL,
         mail_base_url: str = DEFAULT_MAIL_BASE_URL,
         database_base_url: str = DEFAULT_DATABASE_BASE_URL,
+        web_builder_base_url: str = DEFAULT_WEB_BUILDER_BASE_URL,
     ) -> None:
         if not isinstance(token, str) or token.strip() == "":
             raise CogniCloudError(
@@ -45,6 +48,9 @@ class CogniCloud:
         self.mail = MailApi(HttpConfig(base_url=mail_base_url, locale=locale, timeout=timeout, max_retries=max_retries), headers)
         self.database = DatabaseApi(
             HttpConfig(base_url=database_base_url, locale=locale, timeout=timeout, max_retries=max_retries), headers
+        )
+        self.web_builder = WebBuilderApi(
+            HttpConfig(base_url=web_builder_base_url, locale=locale, timeout=timeout, max_retries=max_retries), headers
         )
 
 

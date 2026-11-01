@@ -110,6 +110,19 @@ A signed-in person can run SQL in their own database without a key: `cc.database
 
 `cc.database.list`, `get` and `delete` manage databases, `cc.database.keys.list` and `revoke` manage keys, and `cc.database.actions` lists what was done. Keys are created in the dashboard.
 
+## Web builder
+
+Build a React application and host it at `https://<subdomain>.cognicloud.dev`. Leave out `repo_url` to start from a Vite + React starter. Each person can have 3 applications.
+
+```python
+app = cc.web_builder.create("shop", repo_url="https://github.com/acme/shop")
+
+status = cc.web_builder.get(app.id).status
+logs = cc.web_builder.logs(app.id)
+```
+
+`create` starts the build and returns at once, with `status` set to `building`. It then becomes `running` or `failed`. `branch`, `build_command` and `output_dir` default to `main`, `npm run build` and `dist`. `cc.web_builder.list`, `redeploy` and `delete` do the rest.
+
 ## Call an endpoint
 
 ```python
@@ -165,6 +178,7 @@ Every failed request raises `CogniCloudError` with `status` (the HTTP status, `0
 | `browser_base_url` | `https://cognicloud.dev/api/v1/browser` | Point at another environment. |
 | `mail_base_url` | `https://cognicloud.dev/api/v1/mail` | Point at another environment. |
 | `database_base_url` | `https://cognicloud.dev/api/v1/database` | Point at another environment. |
+| `web_builder_base_url` | `https://cognicloud.dev/api/v1/web-builder` | Point at another environment. |
 
 ## Development
 
