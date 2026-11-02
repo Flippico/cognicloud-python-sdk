@@ -59,6 +59,7 @@ class BrowserScreen:
 class BrowserConcurrency:
     active: int
     limit: int
+    available: int | None = None
 
 
 @dataclass(frozen=True)
@@ -71,7 +72,11 @@ class BrowserSessionList:
         concurrency = data["concurrency"]
         return cls(
             items=[BrowserSession.from_json(item) for item in data["items"]],
-            concurrency=BrowserConcurrency(active=concurrency["active"], limit=concurrency["limit"]),
+            concurrency=BrowserConcurrency(
+                active=concurrency["active"],
+                limit=concurrency["limit"],
+                available=concurrency.get("available"),
+            ),
         )
 
 
@@ -210,6 +215,7 @@ class StepRun:
     steps: list[AgentRunStep]
     human_reason: Optional[str]
     upload_index: Optional[int]
+    file_name: Optional[str]
     result: Optional[str]
     marker: Optional[str]
     error_code: Optional[str]
@@ -238,6 +244,7 @@ class StepRun:
             ],
             human_reason=data.get("humanReason"),
             upload_index=data.get("uploadIndex"),
+            file_name=data.get("fileName"),
             result=data.get("result"),
             marker=data.get("marker"),
             error_code=data.get("errorCode"),
@@ -277,7 +284,7 @@ class BrowserSessionsApi:
         return BrowserSession.from_json(data)
 
     def list(self) -> BrowserSessionList:
-        """The workspace's sessions, newest first, with concurrency."""
+        """Your sessions, newest first, with how many are running and how many slots the service has free."""
         return BrowserSessionList.from_json(request(self._config, "GET", "/sessions", self._headers))
 
     def get(self, session_id: str) -> BrowserSession:
@@ -372,6 +379,14 @@ class BrowserSessionsApi:
         """Call after putting the file on the page over the session's `cdp_url`, with `error` if that failed."""
         return self._step_run_post(session_id, run_id, "upload", {"error": error} if error is not None else {})
 
+    def set_step_run_file(self, session_id: str, run_id: str, name: str, file: bytes) -> StepRun:
+        """Stores the file, encrypted, up to 10 MB. When the agent reaches a file field it uploads this file by itself,
+        without pausing at `waiting_for_upload`. Sending another replaces it."""
+        query = urlencode({"name": name})
+        path = f"/sessions/{quote(session_id, safe='')}/step-runs/{quote(run_id, safe='')}/file?{query}"
+        data = request(self._config, "POST", path, self._headers, retry=False, raw=(file, "application/octet-stream"))
+        return StepRun.from_json(data)
+
     def send_step_run_message(self, session_id: str, run_id: str, text: str) -> StepRun:
         """The next step reads it. A run waiting for the person becomes ready."""
         return self._step_run_post(session_id, run_id, "messages", {"text": text})
@@ -429,3 +444,6 @@ class BrowserApi:
         """Saved profiles, newest first. Save one with `browser.sessions.save_profile`."""
         data = request(self._config, "GET", "/profiles", self._headers)
         return [BrowserProfile.from_json(item) for item in data]
+
+    def delete_profile(self, profile_id: str) -> None:
+        request(self._config, "DELETE", f"/profiles/{quote(profile_id, safe='')}", self._headers, retry=False)

@@ -263,6 +263,15 @@ class StepRunTest(unittest.TestCase):
         sessions.continue_step_run("s1", "r1", "Next")
         self.assertEqual(sessions.stop_step_run("s1", "r1").status, "waiting_for_upload")
 
+    def test_stores_a_file_and_deletes_a_profile(self):
+        Stub.routes[("POST", "/v1/browser/sessions/s1/step-runs/r1/file")] = (200, {**self.RUN, "fileName": "my cv.pdf"})
+        Stub.routes[("DELETE", "/v1/browser/profiles/p1")] = (204, None)
+        browser = CogniCloud("t", browser_base_url=self.base).browser
+        self.assertEqual(browser.sessions.set_step_run_file("s1", "r1", "my cv.pdf", b"%PDF").file_name, "my cv.pdf")
+        self.assertIn("name=my+cv.pdf", Stub.seen[-1]["path"])
+        browser.delete_profile("p1")
+        self.assertEqual(Stub.seen[-1]["method"], "DELETE")
+
 
 class TokenRequiredTest(unittest.TestCase):
     def test_refuses_a_missing_or_blank_token_before_any_request(self):
