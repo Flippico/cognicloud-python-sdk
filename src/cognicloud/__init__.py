@@ -54,10 +54,21 @@ from .mail import (
     MailboxList,
     MailServerEndpoint,
 )
-from .web_builder import Application, WebBuilderApi
+from .web_builder import (
+    Application,
+    GithubRepositories,
+    GithubRepository,
+    WebBuilderAction,
+    WebBuilderActionList,
+    WebBuilderApi,
+)
 
 __all__ = [
     "Application",
+    "GithubRepositories",
+    "GithubRepository",
+    "WebBuilderAction",
+    "WebBuilderActionList",
     "WebBuilderApi",
     "BrowserApi",
     "BrowserConcurrency",
@@ -108,4 +119,4 @@ __all__ = [
     "StreamEvent",
     "Usage",
 ]
-__version__ = "0.19.0"
+__version__ = "0.20.0"

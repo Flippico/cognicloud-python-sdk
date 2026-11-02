@@ -56,6 +56,8 @@ class Stub(BaseHTTPRequestHandler):
     do_GET = _answer
     do_POST = _answer
     do_DELETE = _answer
+    do_PATCH = _answer
+    do_PUT = _answer
 
     def log_message(self, *args):
         pass

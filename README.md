@@ -123,6 +123,20 @@ logs = cc.web_builder.logs(app.id)
 
 `create` starts the build and returns at once, with `status` set to `building`. It then becomes `running` or `failed`. `branch`, `build_command` and `output_dir` default to `main`, `npm run build` and `dist`. `cc.web_builder.list`, `redeploy` and `delete` do the rest.
 
+```python
+cc.web_builder.update(app.id, branch="next")
+cc.web_builder.pause(app.id)
+cc.web_builder.resume(app.id)
+requests = cc.web_builder.runtime_logs(app.id)
+history = cc.web_builder.actions(application_id=app.id)
+
+cc.web_builder.create_repository(app.id, "shop")
+cc.web_builder.enable_auto_deploy(app.id)
+cc.web_builder.disable_auto_deploy(app.id)
+```
+
+`update` starts a build, and a paused site has `status` set to `paused`. `create_repository` and the auto-deploy methods need a connected GitHub account: `authorize_github`, `connect_github`, `github_repositories` and `disconnect_github`.
+
 ## Call an endpoint
 
 ```python
