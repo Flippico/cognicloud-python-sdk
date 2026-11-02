@@ -1,8 +1,12 @@
 """CogniCloud SDK for Python. Standard library only; needs Python 3.10 or newer."""
 
 from .browser import (
+    AgentRun,
+    AgentRunStep,
     BrowserApi,
     BrowserConcurrency,
+    BrowserPage,
+    BrowserPageElement,
     BrowserProfile,
     BrowserScreen,
     BrowserSession,
@@ -64,6 +68,10 @@ from .web_builder import (
 )
 
 __all__ = [
+    "AgentRun",
+    "AgentRunStep",
+    "BrowserPage",
+    "BrowserPageElement",
     "Application",
     "GithubRepositories",
     "GithubRepository",
@@ -119,4 +127,4 @@ __all__ = [
     "StreamEvent",
     "Usage",
 ]
-__version__ = "0.20.0"
+__version__ = "0.21.0"

@@ -39,9 +39,18 @@ from cognicloud import CogniCloud
 cc = CogniCloud(amadeus_token)
 session = cc.browser.sessions.create(timeout_minutes=15)
 print(session.cdp_url)   # connect Playwright, Puppeteer or any CDP client here
+
+page = cc.browser.sessions.read_page(session.id)
+cc.browser.sessions.act(session.id, {"type": "navigate", "url": "https://example.com"})
+cc.browser.sessions.act(session.id, {"type": "click", "index": 3})
+
+run = cc.browser.sessions.start_agent_run(session.id, "Find the price of the Pro plan", endpoint_id, credential)
+print(cc.browser.sessions.get_agent_run(session.id, run.id).result)
+
 cc.browser.sessions.stop(session.id)
 ```
 
+- `act` takes `navigate`, `click`, `type`, `key`, `scroll`, `back` and `wait`, and returns the page afterwards. Each step of an agent run is a call billed to the endpoint.
 - `timeout_minutes` is 1 to 240 and defaults to 15.
 - Closing the CDP connection does not stop a session; call `sessions.stop`.
 - `status` is `active` or `stopped`; `cdp_url` and `live_url` are `None` once stopped. `live_url` is a page where a person can watch and take over the browser.

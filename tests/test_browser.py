@@ -166,6 +166,56 @@ if __name__ == "__main__":
     unittest.main()
 
 
+class PageControlTest(unittest.TestCase):
+    PAGE = {
+        "url": "https://a.test/",
+        "title": "A",
+        "text": "Welcome",
+        "elements": [{"index": 1, "tag": "button", "kind": None, "label": "Sign in", "value": None, "href": None}],
+        "truncated": False,
+        "screenshot": None,
+    }
+    RUN = {
+        "id": "r1",
+        "sessionId": "s1",
+        "status": "succeeded",
+        "maxSteps": 25,
+        "steps": [{"number": 1, "url": "https://a.test/", "thought": "t", "actions": ["done"], "error": None}],
+        "result": "Done",
+        "errorCode": None,
+        "startedAt": "2026-11-02T10:00:00Z",
+        "finishedAt": "2026-11-02T10:00:01Z",
+    }
+
+    def setUp(self):
+        Stub.routes = {}
+        Stub.seen = []
+        self.server = HTTPServer(("127.0.0.1", 0), Stub)
+        threading.Thread(target=self.server.serve_forever, daemon=True).start()
+        self.base = f"http://127.0.0.1:{self.server.server_address[1]}/v1/browser"
+        self.addCleanup(self.server.server_close)
+        self.addCleanup(self.server.shutdown)
+
+    def test_reads_acts_and_runs_an_agent(self):
+        one = "/v1/browser/sessions/s1"
+        Stub.routes[("GET", f"{one}/page")] = (200, self.PAGE)
+        Stub.routes[("POST", f"{one}/page/actions")] = (200, self.PAGE)
+        Stub.routes[("POST", f"{one}/agent-runs")] = (202, {**self.RUN, "status": "running"})
+        Stub.routes[("GET", f"{one}/agent-runs/r1")] = (200, self.RUN)
+        Stub.routes[("POST", f"{one}/agent-runs/r1/stop")] = (200, self.RUN)
+        sessions = CogniCloud("t", browser_base_url=self.base).browser.sessions
+        self.assertEqual(sessions.read_page("s1").elements[0].label, "Sign in")
+        sessions.act("s1", {"type": "click", "index": 1})
+        self.assertEqual(Stub.seen[-1]["body"], {"type": "click", "index": 1})
+        started = sessions.start_agent_run("s1", "Sign in", "e1", "secret", max_steps=5)
+        self.assertEqual(started.status, "running")
+        self.assertEqual(
+            Stub.seen[-1]["body"], {"task": "Sign in", "endpointId": "e1", "credential": "secret", "maxSteps": 5}
+        )
+        self.assertEqual(sessions.get_agent_run("s1", "r1").steps[0].actions, ["done"])
+        self.assertEqual(sessions.stop_agent_run("s1", "r1").result, "Done")
+
+
 class TokenRequiredTest(unittest.TestCase):
     def test_refuses_a_missing_or_blank_token_before_any_request(self):
         for token in ["", "   ", None]:
