@@ -196,6 +196,57 @@ class AgentRun:
         )
 
 
+@dataclass(frozen=True)
+class StepRun:
+    """`status` is `ready`, `stepping`, `waiting_for_human`, `waiting_for_upload`, `done`, `failed` or `stopped`.
+    `upload_index` None means the page's first file field. `marker` is the word on the reply's RESULT line."""
+
+    id: str
+    session_id: str
+    endpoint_id: str
+    status: str
+    max_steps: int
+    steps_taken: int
+    steps: list[AgentRunStep]
+    human_reason: Optional[str]
+    upload_index: Optional[int]
+    result: Optional[str]
+    marker: Optional[str]
+    error_code: Optional[str]
+    created_at: str
+    updated_at: str
+    finished_at: Optional[str]
+
+    @classmethod
+    def from_json(cls, data: dict[str, Any]) -> "StepRun":
+        return cls(
+            id=data["id"],
+            session_id=data["sessionId"],
+            endpoint_id=data["endpointId"],
+            status=data["status"],
+            max_steps=data["maxSteps"],
+            steps_taken=data["stepsTaken"],
+            steps=[
+                AgentRunStep(
+                    number=step["number"],
+                    url=step["url"],
+                    thought=step["thought"],
+                    actions=step["actions"],
+                    error=step.get("error"),
+                )
+                for step in data["steps"]
+            ],
+            human_reason=data.get("humanReason"),
+            upload_index=data.get("uploadIndex"),
+            result=data.get("result"),
+            marker=data.get("marker"),
+            error_code=data.get("errorCode"),
+            created_at=data["createdAt"],
+            updated_at=data["updatedAt"],
+            finished_at=data.get("finishedAt"),
+        )
+
+
 class BrowserSessionsApi:
     """Starts, lists, reads and stops browser sessions."""
 
@@ -288,6 +339,53 @@ class BrowserSessionsApi:
     def get_agent_run(self, session_id: str, run_id: str) -> AgentRun:
         path = f"/sessions/{quote(session_id, safe='')}/agent-runs/{quote(run_id, safe='')}"
         return AgentRun.from_json(request(self._config, "GET", path, self._headers))
+
+    def _step_run_post(self, session_id: str, run_id: str, action: str, body: Optional[dict[str, Any]] = None) -> StepRun:
+        path = f"/sessions/{quote(session_id, safe='')}/step-runs/{quote(run_id, safe='')}/{action}"
+        return StepRun.from_json(request(self._config, "POST", path, self._headers, body, retry=False))
+
+    def create_step_run(self, session_id: str, task: str, endpoint_id: str, *, max_steps: Optional[int] = None) -> StepRun:
+        """Stores a run that advances one request at a time. Nothing runs until `run_step`. The task is stored encrypted."""
+        body: dict[str, Any] = {"task": task, "endpointId": endpoint_id}
+        if max_steps is not None:
+            body["maxSteps"] = max_steps
+        path = f"/sessions/{quote(session_id, safe='')}/step-runs"
+        return StepRun.from_json(request(self._config, "POST", path, self._headers, body, retry=False))
+
+    def get_step_run(self, session_id: str, run_id: str) -> StepRun:
+        path = f"/sessions/{quote(session_id, safe='')}/step-runs/{quote(run_id, safe='')}"
+        return StepRun.from_json(request(self._config, "GET", path, self._headers))
+
+    def run_step(self, session_id: str, run_id: str, credential: str, *, timeout_seconds: Optional[int] = None) -> StepRun:
+        """Runs one step within this request. A step that fails or runs out of time still returns: read `status` and the
+        step's `error`. Never retried, because a step can spend model tokens and change the page."""
+        body: dict[str, Any] = {"credential": credential}
+        if timeout_seconds is not None:
+            body["timeoutSeconds"] = timeout_seconds
+        return self._step_run_post(session_id, run_id, "step", body)
+
+    def step_run_human_done(self, session_id: str, run_id: str) -> StepRun:
+        """The person finished what `human_reason` asked."""
+        return self._step_run_post(session_id, run_id, "human-done")
+
+    def report_step_run_upload(self, session_id: str, run_id: str, *, error: Optional[str] = None) -> StepRun:
+        """Call after putting the file on the page over the session's `cdp_url`, with `error` if that failed."""
+        return self._step_run_post(session_id, run_id, "upload", {"error": error} if error is not None else {})
+
+    def send_step_run_message(self, session_id: str, run_id: str, text: str) -> StepRun:
+        """The next step reads it. A run waiting for the person becomes ready."""
+        return self._step_run_post(session_id, run_id, "messages", {"text": text})
+
+    def continue_step_run(self, session_id: str, run_id: str, task: str, *, max_steps: Optional[int] = None) -> StepRun:
+        """Gives a run that is done its next task, in the same conversation and browser."""
+        body: dict[str, Any] = {"task": task}
+        if max_steps is not None:
+            body["maxSteps"] = max_steps
+        return self._step_run_post(session_id, run_id, "continue", body)
+
+    def stop_step_run(self, session_id: str, run_id: str) -> StepRun:
+        """The session keeps running."""
+        return self._step_run_post(session_id, run_id, "stop")
 
     def stop_agent_run(self, session_id: str, run_id: str) -> AgentRun:
         """The session keeps running."""

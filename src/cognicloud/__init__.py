@@ -13,6 +13,7 @@ from .browser import (
     BrowserSessionList,
     BrowserSessionsApi,
     ProxyCountry,
+    StepRun,
 )
 from .client import CogniCloud, CogniCloudBrowser, CogniCloudDatabase
 from .database import (
@@ -70,6 +71,7 @@ from .web_builder import (
 __all__ = [
     "AgentRun",
     "AgentRunStep",
+    "StepRun",
     "BrowserPage",
     "BrowserPageElement",
     "Application",
@@ -127,4 +129,4 @@ __all__ = [
     "StreamEvent",
     "Usage",
 ]
-__version__ = "0.21.0"
+__version__ = "0.22.0"

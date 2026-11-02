@@ -47,6 +47,10 @@ cc.browser.sessions.act(session.id, {"type": "click", "index": 3})
 run = cc.browser.sessions.start_agent_run(session.id, "Find the price of the Pro plan", endpoint_id, credential)
 print(cc.browser.sessions.get_agent_run(session.id, run.id).result)
 
+# For serverless callers: a stored run that does one step per request.
+stored = cc.browser.sessions.create_step_run(session.id, "Find the price", endpoint_id)
+after = cc.browser.sessions.run_step(session.id, stored.id, credential, timeout_seconds=120)
+
 cc.browser.sessions.stop(session.id)
 ```
 

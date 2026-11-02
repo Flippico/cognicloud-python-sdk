@@ -216,6 +216,54 @@ class PageControlTest(unittest.TestCase):
         self.assertEqual(sessions.stop_agent_run("s1", "r1").result, "Done")
 
 
+class StepRunTest(unittest.TestCase):
+    RUN = {
+        "id": "r1",
+        "sessionId": "s1",
+        "endpointId": "e1",
+        "status": "waiting_for_upload",
+        "maxSteps": 25,
+        "stepsTaken": 1,
+        "steps": [{"number": 1, "url": "https://a.test/", "thought": "t", "actions": ["upload file"], "error": None}],
+        "humanReason": None,
+        "uploadIndex": 4,
+        "result": None,
+        "marker": None,
+        "errorCode": None,
+        "createdAt": "2026-11-02T10:00:00Z",
+        "updatedAt": "2026-11-02T10:00:01Z",
+        "finishedAt": None,
+    }
+
+    def setUp(self):
+        Stub.routes = {}
+        Stub.seen = []
+        self.server = HTTPServer(("127.0.0.1", 0), Stub)
+        threading.Thread(target=self.server.serve_forever, daemon=True).start()
+        self.base = f"http://127.0.0.1:{self.server.server_address[1]}/v1/browser"
+        self.addCleanup(self.server.server_close)
+        self.addCleanup(self.server.shutdown)
+
+    def test_calls_each_route(self):
+        runs = "/v1/browser/sessions/s1/step-runs"
+        Stub.routes[("POST", runs)] = (201, self.RUN)
+        Stub.routes[("GET", f"{runs}/r1")] = (200, self.RUN)
+        for action in ["step", "human-done", "upload", "messages", "continue", "stop"]:
+            Stub.routes[("POST", f"{runs}/r1/{action}")] = (200, self.RUN)
+        sessions = CogniCloud("t", browser_base_url=self.base).browser.sessions
+        self.assertEqual(sessions.create_step_run("s1", "Go", "e1", max_steps=5).upload_index, 4)
+        self.assertEqual(Stub.seen[-1]["body"], {"task": "Go", "endpointId": "e1", "maxSteps": 5})
+        self.assertEqual(sessions.get_step_run("s1", "r1").steps[0].actions, ["upload file"])
+        sessions.run_step("s1", "r1", "secret", timeout_seconds=60)
+        self.assertEqual(Stub.seen[-1]["body"], {"credential": "secret", "timeoutSeconds": 60})
+        sessions.step_run_human_done("s1", "r1")
+        sessions.report_step_run_upload("s1", "r1", error="no field")
+        self.assertEqual(Stub.seen[-1]["body"], {"error": "no field"})
+        sessions.send_step_run_message("s1", "r1", "Hi")
+        sessions.continue_step_run("s1", "r1", "Next")
+        self.assertEqual(sessions.stop_step_run("s1", "r1").status, "waiting_for_upload")
+
+
 class TokenRequiredTest(unittest.TestCase):
     def test_refuses_a_missing_or_blank_token_before_any_request(self):
         for token in ["", "   ", None]:
