@@ -266,12 +266,14 @@ class BrowserSessionsApi:
         timeout_minutes: Optional[int] = None,
         profile_id: Optional[str] = None,
         screen: Optional[BrowserScreen] = None,
+        headful: bool = False,
     ) -> BrowserSession:
         """Starts a session. Its `cdp_url` and `live_url` carry the session token; treat them as secrets.
 
         `timeout_minutes` is 1 to 240 and defaults to 15. `profile_id` starts from a saved profile. `screen` is the
-        window size, 320 to 6144 wide and 320 to 3456 high; Chrome starts with it. A start beyond the workspace's limit
-        raises CogniCloudError with status 429 and code `concurrency_limit`.
+        window size, 320 to 6144 wide and 320 to 3456 high; Chrome starts with it. `headful` starts a visible Chrome
+        window instead of a headless one, for sites that turn headless Chrome away; needs browser service 0.10.0. A
+        start beyond the workspace's limit raises CogniCloudError with status 429 and code `concurrency_limit`.
         """
         body: dict[str, Any] = {}
         if timeout_minutes is not None:
@@ -280,6 +282,8 @@ class BrowserSessionsApi:
             body["profileId"] = profile_id
         if screen is not None:
             body["screen"] = {"width": screen.width, "height": screen.height}
+        if headful:
+            body["headful"] = True
         data = request(self._config, "POST", "/sessions", self._headers, body, retry=False)
         return BrowserSession.from_json(data)
 

@@ -29,7 +29,8 @@ def _decoded(body):
 
 
 class Stub(BaseHTTPRequestHandler):
-    """Answers from `routes[(method, path)]` as (status, body) and records every request."""
+    """Answers from `routes[(method, path)]` as (status, body), or from a list of them in turn (the last one repeats),
+    and records every request."""
 
     routes: dict = {}
     seen: list = []
@@ -45,7 +46,10 @@ class Stub(BaseHTTPRequestHandler):
                 "body": _decoded(body),
             }
         )
-        status, payload = Stub.routes.get((self.command, self.path.split("?")[0]), (404, {"error": "not_found", "message": "No route matches this path."}))
+        answer = Stub.routes.get((self.command, self.path.split("?")[0]), (404, {"error": "not_found", "message": "No route matches this path."}))
+        if isinstance(answer, list):
+            answer = answer.pop(0) if len(answer) > 1 else answer[0]
+        status, payload = answer
         raw = b"" if payload is None else json.dumps(payload).encode()
         self.send_response(status)
         self.send_header("content-type", "application/json")
@@ -334,6 +338,15 @@ class WindowSizeTest(unittest.TestCase):
         self.assertEqual(session.screen, BrowserScreen(width=1280, height=720))
         self.assertEqual(Stub.seen[0]["body"], {"timeoutMinutes": 15, "screen": {"width": 1280, "height": 720}})
 
+    def test_asks_for_a_visible_window_only_when_headful(self):
+        from cognicloud import CogniCloudBrowser
+
+        Stub.routes[("POST", "/v1/browser/sessions")] = (201, SESSION)
+        sessions = CogniCloudBrowser("cgb_abc", browser_base_url=self.base).browser.sessions
+        sessions.create(headful=True)
+        self.assertEqual(Stub.seen[0]["body"], {"headful": True})
+        sessions.create()
+        self.assertEqual(Stub.seen[1]["body"], {})
 
 
 class ProfileUploadTest(unittest.TestCase):

@@ -1,5 +1,21 @@
 """CogniCloud SDK for Python. Standard library only; needs Python 3.10 or newer."""
 
+from .agents import (
+    Agent,
+    AgentAction,
+    AgentActionList,
+    AgentKey,
+    AgentKeysApi,
+    AgentsApi,
+    CreatedAgent,
+    Run,
+    RunList,
+    RunsApi,
+    RunStep,
+    Skill,
+    SkillsApi,
+    SkillVersion,
+)
 from .browser import (
     AgentRun,
     AgentRunStep,
@@ -59,6 +75,14 @@ from .mail import (
     MailboxList,
     MailServerEndpoint,
 )
+from .marketplace import (
+    MarketplaceAction,
+    MarketplaceActionList,
+    MarketplaceApi,
+    Template,
+    TemplatePublisher,
+    TemplateSkill,
+)
 from .web_builder import (
     Application,
     GithubRepositories,
@@ -69,6 +93,26 @@ from .web_builder import (
 )
 
 __all__ = [
+    "Agent",
+    "AgentAction",
+    "AgentActionList",
+    "AgentKey",
+    "AgentKeysApi",
+    "AgentsApi",
+    "CreatedAgent",
+    "Run",
+    "RunList",
+    "RunsApi",
+    "RunStep",
+    "Skill",
+    "SkillsApi",
+    "SkillVersion",
+    "MarketplaceAction",
+    "MarketplaceActionList",
+    "MarketplaceApi",
+    "Template",
+    "TemplatePublisher",
+    "TemplateSkill",
     "AgentRun",
     "AgentRunStep",
     "StepRun",
@@ -129,4 +173,4 @@ __all__ = [
     "StreamEvent",
     "Usage",
 ]
-__version__ = "0.23.0"
+__version__ = "0.24.0"

@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.24.0] - Unreleased
+
+### Added
+- `client.agents` manages agents: `list`, `get`, `create` (returns the `ccag_` credential once), `update`, `delete`, `rotate_credential` and `actions`; `agents.keys.list` and `revoke`. `publish` and `unpublish` are planned and answer 503 for now.
+- `client.skills`: `list`, `get`, `create`, `update`, `delete` and `versions`.
+- `client.runs` runs agents: `start`, `get`, `list`, `stop`, and `run_and_wait(agent_id, input, poll_interval=2.0, timeout=900.0)`, which returns the finished run and raises `CogniCloudError` with code `timeout` when time runs out; a negative `poll_interval` or `timeout` raises `ValueError`. `Run`, `RunStep` and `RunList` are exported. Needs agents service 0.2.0.
+- `client.marketplace`: `list_templates`, `get_template` and `actions`.
+- The `agents_base_url` and `marketplace_base_url` options point them at another environment.
+- A client made with an agent credential (`ccag_`) or agents key (`cga_`) and no `tenant` sends no `tenant_id` to agents and marketplace, because the credential names its workspace.
+- `browser.sessions.create(headful=True)` starts a visible Chrome window. Needs browser service 0.10.0.
+
 ## [0.23.0] - 2026-11-02
 
 ### Added

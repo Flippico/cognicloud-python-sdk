@@ -1,6 +1,6 @@
 # cognicloud
 
-Use CogniCloud from Python. Version 0.4.0 covers browser sessions for agents; the other products come later. Same behaviour as [`@cognicloud/sdk`](https://github.com/Flippico/cognicloud-js-sdk) and [`cognicloud-sdk`](https://github.com/Flippico/cognicloud-rust-sdk).
+Use CogniCloud from Python: browser sessions, mail, databases, the web builder, agents and AI Gateway endpoints. Same behaviour as [`@cognicloud/sdk`](https://github.com/Flippico/cognicloud-js-sdk) and [`cognicloud-sdk`](https://github.com/Flippico/cognicloud-rust-sdk).
 
 ## Install
 
@@ -56,6 +56,7 @@ cc.browser.sessions.stop(session.id)
 
 - `act` takes `navigate`, `click`, `type`, `key`, `scroll`, `back` and `wait`, and returns the page afterwards. Each step of an agent run is a call billed to the endpoint.
 - `timeout_minutes` is 1 to 240 and defaults to 15.
+- `create(headful=True)` starts a visible Chrome window instead of a headless one, for sites that turn headless Chrome away. Needs browser service 0.10.0.
 - Closing the CDP connection does not stop a session; call `sessions.stop`.
 - `status` is `active` or `stopped`; `cdp_url` and `live_url` are `None` once stopped. `live_url` is a page where a person can watch and take over the browser.
 - `sessions.list()` returns `items` and `concurrency` (`active`, `limit`). A start beyond the limit raises `CogniCloudError` with `status == 429` and `code == "concurrency_limit"`.
@@ -150,6 +151,83 @@ cc.web_builder.disable_auto_deploy(app.id)
 
 `update` starts a build, and a paused site has `status` set to `paused`. `create_repository` and the auto-deploy methods need a connected GitHub account: `authorize_github`, `connect_github`, `github_repositories` and `disconnect_github`.
 
+## Agents
+
+An agent thinks with one of your AI Gateway endpoints, follows its instructions and skills, and answers a task. Creating it returns its `ccag_` credential once; store it.
+
+```python
+created = cc.agents.create(
+    "Researcher",
+    endpoint_id,
+    "Answer briefly and cite sources.",
+    tools=[],
+    max_steps=20,
+    timeout_seconds=300,
+)
+agent = created.agent
+credential = created.credential
+
+run = cc.runs.run_and_wait(agent.id, "What is CogniCloud?")
+print(run.status, run.output)
+```
+
+`run_and_wait(agent_id, input, poll_interval=2.0, timeout=900.0)` starts a run and polls until it is no longer `running`. It returns the finished run, also when it `failed` or was `stopped`; read `error_code` and `error_message`. After `timeout` seconds it raises `CogniCloudError` with code `timeout`, and the run keeps going.
+
+```python
+started = cc.runs.start(agent.id, "Summarise today's news")
+run = cc.runs.get(started.id)
+page = cc.runs.list(agent.id, limit=20)        # page.items, page.next_cursor
+cc.runs.stop(started.id)
+```
+
+- A run's `status` is `running`, `completed`, `failed` or `stopped`. `error_code` is `max_steps`, `timeout`, `model_error`, `invalid_answer`, `interrupted` or `stopped`. Each step has `number`, `thought`, `tool`, `summary` and `error`. Tools are refused in this release.
+- `start` raises `CogniCloudError` with 409 `agent_paused`, 422 `endpoint_missing`, 429 `limit_reached`, or 503. Starts and stops are never retried.
+- A client made with the agent's credential runs that agent and nothing else; other agents service calls raise 403 `forbidden`. Marketplace calls need the signed-in person's session token; `ccag_` and `cga_` keys get `401`. The credential names its workspace, so leave out `tenant`:
+
+```python
+agent_client = CogniCloud(os.environ["COGNICLOUD_AGENT_CREDENTIAL"])
+run = agent_client.runs.run_and_wait(agent_id, "Check the status page")
+```
+
+Manage agents, skills and keys:
+
+```python
+cc.agents.list()
+cc.agents.update(agent.id, status="paused")    # "active" resumes; database_id=None clears the database
+new_credential = cc.agents.rotate_credential(agent.id)
+cc.agents.delete(agent.id)
+
+skill = cc.skills.create("Cite sources", "Always cite", "Cite every fact with its link.")
+cc.skills.update(skill.id, body="Cite every fact.")
+history = cc.skills.versions(skill.id)
+cc.agents.update(agent.id, skill_ids=[skill.id])
+
+cc.agents.keys.list()
+cc.agents.keys.revoke(key_id)
+log = cc.agents.actions(limit=50)              # log.items, log.next_cursor
+```
+
+`cc.agents.publish(agent_id, category=..., publisher_name=..., language=...)` and `unpublish` are planned: the service answers 503 until marketplace publishing ships.
+
+## Marketplace
+
+Agent templates to start from. Marketplace calls need the signed-in person's session token; `ccag_` and `cga_` keys get `401`.
+
+```python
+templates = cc.marketplace.list_templates(category="research")
+template = cc.marketplace.get_template("web-researcher")
+cc.agents.create(
+    template.name,
+    endpoint_id,
+    template.instructions,
+    tools=template.tools,
+    max_steps=template.max_steps,
+    timeout_seconds=template.timeout_seconds,
+    template_slug=template.slug,
+)
+log = cc.marketplace.actions()
+```
+
 ## Call an endpoint
 
 ```python
@@ -198,7 +276,7 @@ Every failed request raises `CogniCloudError` with `status` (the HTTP status, `0
 | Option | Default | |
 | --- | --- | --- |
 | `token` | required | The account the calls act as: the signed-in person's Amadeus session token, or a browser key for browser calls. A missing or blank token raises `CogniCloudError` with code `missing_token` when the client is created. |
-| `tenant` | `"cognicloud"` | The workspace, sent as `tenant_id`. The platform workspace is open to every signed-in user. |
+| `tenant` | `"cognicloud"` | The workspace, sent as `tenant_id`. The platform workspace is open to every signed-in user. With an agent credential (`ccag_`) or agents key (`cga_`) and no `tenant`, agents and marketplace calls send none, because the credential names its workspace; browser, mail, database and web builder calls still send `"cognicloud"`. Marketplace calls need the signed-in person's session token; `ccag_` and `cga_` keys get `401`. |
 | `locale` | `"en"` | `Accept-Language` for localised responses. |
 | `timeout` | `30.0` | Seconds per request. |
 | `max_retries` | `2` | For `429` and `5xx`, on reads only. Starts and stops are never retried. |
@@ -206,6 +284,8 @@ Every failed request raises `CogniCloudError` with `status` (the HTTP status, `0
 | `mail_base_url` | `https://cognicloud.dev/api/v1/mail` | Point at another environment. |
 | `database_base_url` | `https://cognicloud.dev/api/v1/database` | Point at another environment. |
 | `web_builder_base_url` | `https://cognicloud.dev/api/v1/web-builder` | Point at another environment. |
+| `agents_base_url` | `https://cognicloud.dev/api/v1/agents` | Point at another environment. |
+| `marketplace_base_url` | `https://cognicloud.dev/api/v1/marketplace` | Point at another environment. |
 
 ## Development
 
