@@ -5,6 +5,8 @@ from http.server import HTTPServer
 from cognicloud import CogniCloud, CogniCloudError
 from test_browser import Stub
 
+KEY = "cc_acc_636f676e69636c6f7564_" + "a" * 64
+
 ID = "7c1f0c2e-6a5b-4d3e-9f10-1a2b3c4d5e6f"
 APPLICATION = {
     "id": ID,
@@ -33,7 +35,7 @@ class WebBuilderTest(unittest.TestCase):
         self.server.server_close()
 
     def client(self):
-        return CogniCloud("session-token", tenant="acme", web_builder_base_url=self.base, max_retries=0)
+        return CogniCloud(KEY, web_builder_base_url=self.base, max_retries=0)
 
     def test_creates_an_application_with_the_session_and_tenant(self):
         Stub.routes[("POST", "/api/v1/web-builder/applications")] = (201, APPLICATION)
@@ -42,8 +44,8 @@ class WebBuilderTest(unittest.TestCase):
         self.assertIsNone(created.branch)
         sent = Stub.seen[0]
         self.assertEqual(sent["body"], {"subdomain": "shop", "repoUrl": "https://github.com/acme/shop"})
-        self.assertEqual(sent["headers"]["authorization"], "Bearer session-token")
-        self.assertEqual(sent["headers"]["tenant_id"], "acme")
+        self.assertEqual(sent["headers"]["authorization"], f"Bearer {KEY}")
+        self.assertNotIn("tenant_id", sent["headers"])
 
     def test_lists_reads_redeploys_and_reads_logs(self):
         Stub.routes[("GET", "/api/v1/web-builder/applications")] = (200, {"items": [APPLICATION]})

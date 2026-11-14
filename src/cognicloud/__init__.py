@@ -4,8 +4,6 @@ from .agents import (
     Agent,
     AgentAction,
     AgentActionList,
-    AgentKey,
-    AgentKeysApi,
     AgentsApi,
     CreatedAgent,
     Run,
@@ -31,14 +29,12 @@ from .browser import (
     ProxyCountry,
     StepRun,
 )
-from .client import CogniCloud, CogniCloudBrowser, CogniCloudDatabase
+from .client import CogniCloud
 from .database import (
     DatabaseAction,
     DatabaseActionList,
     DatabaseApi,
     DatabaseDataApi,
-    DatabaseKey,
-    DatabaseKeysApi,
     DatabaseTable,
     HostedDatabase,
     QueryResult,
@@ -64,6 +60,7 @@ from .endpoint import (
     Usage,
 )
 from .errors import CogniCloudError
+from .keys import ParsedKey, parse_key
 from .mail import (
     CreatedMailbox,
     MailApi,
@@ -96,8 +93,6 @@ __all__ = [
     "Agent",
     "AgentAction",
     "AgentActionList",
-    "AgentKey",
-    "AgentKeysApi",
     "AgentsApi",
     "CreatedAgent",
     "Run",
@@ -132,16 +127,14 @@ __all__ = [
     "BrowserSessionList",
     "BrowserSessionsApi",
     "CogniCloud",
-    "CogniCloudBrowser",
-    "CogniCloudDatabase",
     "CogniCloudError",
+    "ParsedKey",
+    "parse_key",
     "CreatedMailbox",
     "DatabaseAction",
     "DatabaseActionList",
     "DatabaseApi",
     "DatabaseDataApi",
-    "DatabaseKey",
-    "DatabaseKeysApi",
     "DatabaseTable",
     "HostedDatabase",
     "QueryResult",
@@ -173,4 +166,4 @@ __all__ = [
     "StreamEvent",
     "Usage",
 ]
-__version__ = "0.24.0"
+__version__ = "1.0.0"

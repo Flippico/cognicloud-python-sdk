@@ -10,33 +10,44 @@ Python 3.10 or newer. No dependencies.
 pip install "git+https://github.com/Flippico/cognicloud-python-sdk.git"
 ```
 
-## Browser sessions
+1.0 changes how you sign in: one API key replaces the session token, the `tenant` option and the per-product keys. See [Migrating from 0.x](#migrating-from-0x).
 
-Browser calls accept the signed-in person's token, or a browser key. Create a key in the dashboard under **Browser → API keys** and pass it as the token. A key keeps working after its owner signs out. Keys cannot be created through the SDK or the API.
+## API keys
 
-Use the browser product with a browser key alone. The key names its workspace, so no Amadeus token or tenant is needed:
+Create a key in the dashboard under **Settings → API keys**. It is shown once.
+
+- An **account key** (`cc_acc_...`) reaches every product of the workspace and acts as the person who created it.
+- A **product key** reaches one product: `cc_gw_` AI Gateway, `cc_db_` Database, `cc_br_` Browser, `cc_ml_` Mail, `cc_ag_` Agents. It can be narrowed to one resource, such as one endpoint, database or agent.
+
+The key names its workspace, so there is no `tenant` option and no `tenant_id` header. Keys cannot be created through the SDK or the API.
 
 ```python
 import os
 
-from cognicloud import CogniCloudBrowser
+from cognicloud import CogniCloud
 
-browser = CogniCloudBrowser(os.environ["COGNICLOUD_BROWSER_KEY"])
-session = browser.browser.sessions.create(timeout_minutes=15)
+cc = CogniCloud(os.environ["COGNICLOUD_API_KEY"])
+```
+
+A missing or blank key raises `CogniCloudError` with code `missing_key` when the client is created. A key in a retired format (`cgb_`, `cgd_`, `cga_`, `ccag_`, `cgm_`, `cgv_`, `cc_live_`) raises `retired_key`, and anything else, such as a session token, raises `invalid_key`. `parse_key(key)` reads a key's kind and workspace without a request.
+
+## Browser sessions
+
+Browser calls take an account key or a browser key (`cc_br_`):
+
+```python
+browser = CogniCloud(os.environ["COGNICLOUD_BROWSER_KEY"]).browser
+session = browser.sessions.create(timeout_minutes=15)
 ```
 
 Upload a profile folder packed as a `.tar.gz` (see the app docs for how to pack it), then start a session from it:
 
 ```python
-profile = browser.browser.import_profile("Shop account", "shop-profile.tar.gz")
-session = browser.browser.sessions.create(profile_id=profile.id)
+profile = browser.import_profile("Shop account", "shop-profile.tar.gz")
+session = browser.sessions.create(profile_id=profile.id)
 ```
 
-
 ```python
-from cognicloud import CogniCloud
-
-cc = CogniCloud(amadeus_token)
 session = cc.browser.sessions.create(timeout_minutes=15)
 print(session.cdp_url)   # connect Playwright, Puppeteer or any CDP client here
 
@@ -64,7 +75,7 @@ cc.browser.sessions.stop(session.id)
 
 ## Mail
 
-Mailboxes on the Flippico mail server. The token is a signed-in person's token or a mail key (`cgm_...`). The password is returned once; store it.
+Mailboxes on the Flippico mail server, with an account key or a mail key (`cc_ml_`). The password is returned once; store it.
 
 ```python
 created = cc.mail.create("support")
@@ -76,21 +87,17 @@ cc.mail.domains.verify(domain.id)
 cc.mail.create("ceo", domain="yourcompany.com")
 ```
 
-`mail.list`, `get`, `rotate_password` and `delete` manage mailboxes; `mail.domains.list`, `get` and `delete` manage domains. Adding, verifying and deleting domains need a signed-in person's token.
+`mail.list`, `get`, `rotate_password` and `delete` manage mailboxes; `mail.domains.list`, `get` and `delete` manage domains.
 
 ## Database
 
-Hosted Postgres. A signed-in person creates databases; a database key (`cgd_...`) from the dashboard queries one of them and needs nothing else. A `read` key can only read. A `write` key runs as the database owner.
+Hosted Postgres. An account key or a database key (`cc_db_`) for every database creates and lists databases. `cc.database.data()` queries one: with a database key narrowed to one database it needs nothing else; with an account key, name the database, `cc.database.data(database.id)` (sent as `x-database-id`).
 
 ```python
-import os
+from cognicloud import Statement
 
-from cognicloud import CogniCloud, CogniCloudDatabase, Statement
-
-cc = CogniCloud(session_token)
 database = cc.database.create("Orders")
-
-db = CogniCloudDatabase(os.environ["COGNICLOUD_DATABASE_KEY"])
+db = cc.database.data(database.id)
 
 db.query("CREATE TABLE orders (id serial PRIMARY KEY, email text, total numeric)")
 rows = db.query("SELECT * FROM orders WHERE total > $1", [100]).rows
@@ -120,9 +127,7 @@ Pass values as `params`, never inside the SQL. They need no quotes and cannot br
 db.query("INSERT INTO members (id, user_id) VALUES ($1, $2)", [member_id, user_id])
 ```
 
-A signed-in person can run SQL in their own database without a key: `cc.database.query(database.id, sql, params)` and `cc.database.tables(database.id)`.
-
-`cc.database.list`, `get` and `delete` manage databases, `cc.database.keys.list` and `revoke` manage keys, and `cc.database.actions` lists what was done. Keys are created in the dashboard.
+`cc.database.query(database.id, sql, params)` and `cc.database.tables(database.id)` also work without `data`. `cc.database.list`, `get` and `delete` manage databases, and `cc.database.actions` lists what was done.
 
 ## Web builder
 
@@ -182,14 +187,14 @@ cc.runs.stop(started.id)
 
 - A run's `status` is `running`, `completed`, `failed` or `stopped`. `error_code` is `max_steps`, `timeout`, `model_error`, `invalid_answer`, `interrupted` or `stopped`. Each step has `number`, `thought`, `tool`, `summary` and `error`. Tools are refused in this release.
 - `start` raises `CogniCloudError` with 409 `agent_paused`, 422 `endpoint_missing`, 429 `limit_reached`, or 503. Starts and stops are never retried.
-- A client made with the agent's credential runs that agent and nothing else; other agents service calls raise 403 `forbidden`. Marketplace calls need the signed-in person's session token; `ccag_` and `cga_` keys get `401`. The credential names its workspace, so leave out `tenant`:
+- An Agents key (`cc_ag_`) narrowed to one agent replaces the old agent credential: it runs that agent and nothing else; other calls raise 403.
 
 ```python
-agent_client = CogniCloud(os.environ["COGNICLOUD_AGENT_CREDENTIAL"])
+agent_client = CogniCloud(os.environ["COGNICLOUD_AGENT_KEY"])
 run = agent_client.runs.run_and_wait(agent_id, "Check the status page")
 ```
 
-Manage agents, skills and keys:
+Manage agents and skills:
 
 ```python
 cc.agents.list()
@@ -202,8 +207,6 @@ cc.skills.update(skill.id, body="Cite every fact.")
 history = cc.skills.versions(skill.id)
 cc.agents.update(agent.id, skill_ids=[skill.id])
 
-cc.agents.keys.list()
-cc.agents.keys.revoke(key_id)
 log = cc.agents.actions(limit=50)              # log.items, log.next_cursor
 ```
 
@@ -211,7 +214,7 @@ log = cc.agents.actions(limit=50)              # log.items, log.next_cursor
 
 ## Marketplace
 
-Agent templates to start from. Marketplace calls need the signed-in person's session token; `ccag_` and `cga_` keys get `401`.
+Agent templates to start from.
 
 ```python
 templates = cc.marketplace.list_templates(category="research")
@@ -231,10 +234,9 @@ log = cc.marketplace.actions()
 ## Call an endpoint
 
 ```python
-import os
-from cognicloud import EndpointClient, ResponsesRequest, McpTool, EmbeddingsRequest, DeltaEvent, DoneEvent, ErrorEvent
+from cognicloud import ResponsesRequest, McpTool, EmbeddingsRequest, DeltaEvent, DoneEvent, ErrorEvent
 
-endpoint = EndpointClient(os.environ["COGNICLOUD_KEY"], endpoint_id=os.environ["COGNICLOUD_ENDPOINT_ID"])
+endpoint = cc.endpoint(os.environ["COGNICLOUD_ENDPOINT_ID"])
 
 answer = endpoint.responses(
     ResponsesRequest(
@@ -248,6 +250,8 @@ next_answer = endpoint.responses(ResponsesRequest("And this one?", previous_resp
 
 vectors = endpoint.embeddings(EmbeddingsRequest(["first text", "second text"], dimensions=256))
 ```
+
+The call acts as the endpoint's owner, with an account key or an AI Gateway key; a key narrowed to one endpoint reaches only that one. The workspace in the invoke address comes from the key. `EndpointClient(api_key, endpoint_id=...)` or `EndpointClient(api_key, url=endpoint_url)` makes the same client without a `CogniCloud`.
 
 `McpTool` names an MCP server with `server_url` and `bearer_token`. The gateway checks the address (https, with no credentials or fragment) and passes both to the provider. A tool with only `server_label` names a server the gateway is configured with. The answer's `response_id` continues the conversation on the same endpoint, and `output_items` holds the tool calls. `embeddings` needs an endpoint whose deployment is an embedding model, and returns one vector per input.
 
@@ -275,17 +279,30 @@ Every failed request raises `CogniCloudError` with `status` (the HTTP status, `0
 
 | Option | Default | |
 | --- | --- | --- |
-| `token` | required | The account the calls act as: the signed-in person's Amadeus session token, or a browser key for browser calls. A missing or blank token raises `CogniCloudError` with code `missing_token` when the client is created. |
-| `tenant` | `"cognicloud"` | The workspace, sent as `tenant_id`. The platform workspace is open to every signed-in user. With an agent credential (`ccag_`) or agents key (`cga_`) and no `tenant`, agents and marketplace calls send none, because the credential names its workspace; browser, mail, database and web builder calls still send `"cognicloud"`. Marketplace calls need the signed-in person's session token; `ccag_` and `cga_` keys get `401`. |
+| `api_key` | required | An account key or a product key from Settings → API keys. It names its workspace. |
 | `locale` | `"en"` | `Accept-Language` for localised responses. |
 | `timeout` | `30.0` | Seconds per request. |
 | `max_retries` | `2` | For `429` and `5xx`, on reads only. Starts and stops are never retried. |
+| `gateway_base_url` | `https://cognicloud.dev/api/v1/ai-gateway` | Point at another environment. |
 | `browser_base_url` | `https://cognicloud.dev/api/v1/browser` | Point at another environment. |
 | `mail_base_url` | `https://cognicloud.dev/api/v1/mail` | Point at another environment. |
 | `database_base_url` | `https://cognicloud.dev/api/v1/database` | Point at another environment. |
 | `web_builder_base_url` | `https://cognicloud.dev/api/v1/web-builder` | Point at another environment. |
 | `agents_base_url` | `https://cognicloud.dev/api/v1/agents` | Point at another environment. |
 | `marketplace_base_url` | `https://cognicloud.dev/api/v1/marketplace` | Point at another environment. |
+
+## Migrating from 0.x
+
+| 0.x | 1.0 |
+| --- | --- |
+| `CogniCloud(session_token, tenant=...)` | `CogniCloud(api_key)` with an account key |
+| `EndpointClient("cc_live_...", endpoint_id=..., tenant=...)` | `cc.endpoint(endpoint_id)`, or `EndpointClient(api_key, endpoint_id=...)` |
+| `CogniCloudBrowser("cgb_...")` | `CogniCloud("cc_br_...").browser` |
+| `CogniCloudDatabase("cgd_...")` | `CogniCloud("cc_db_...").database.data()` |
+| `CogniCloud("ccag_...")` | `CogniCloud("cc_ag_...")` narrowed to the agent |
+| `cc.database.keys`, `cc.agents.keys` | Settings → API keys in the dashboard |
+
+The old keys keep working on the services for two weeks after the new keys launch, then stop. SDK 1.0 refuses them at once with `retired_key`, so create the new keys before you upgrade.
 
 ## Development
 

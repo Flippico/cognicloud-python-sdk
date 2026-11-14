@@ -10,8 +10,8 @@ from urllib.parse import quote
 from ._http import HttpConfig, open_stream, request
 from ._sse import Record, records
 from .errors import CogniCloudError
+from .keys import parse_key
 
-DEFAULT_TENANT = "cognicloud"
 DEFAULT_GATEWAY_BASE_URL = "https://cognicloud.dev/api/v1/ai-gateway"
 
 
@@ -177,31 +177,31 @@ def encode_tenant(tenant: str) -> str:
 
 
 class EndpointClient:
-    """Calls one AI Gateway endpoint with its own credential.
+    """Calls one AI Gateway endpoint with an account key or an AI Gateway key, as the endpoint's owner.
 
-    Pass the endpoint's invoke URL as `url` (as CogniCloud issued it), or the `endpoint_id` and `tenant`. Invoke calls
-    are never retried, because a retried call can be billed twice.
+    Pass the endpoint's invoke URL as `url` (as CogniCloud issued it), or its `endpoint_id`; the workspace comes from
+    the key. Invoke calls are never retried, because a retried call can be billed twice.
     """
 
     def __init__(
         self,
-        credential: str,
+        api_key: str,
         *,
         endpoint_id: Optional[str] = None,
         url: Optional[str] = None,
-        tenant: str = DEFAULT_TENANT,
         base_url: str = DEFAULT_GATEWAY_BASE_URL,
         locale: str = "en",
         timeout: float = 30.0,
         max_retries: int = 2,
     ) -> None:
+        tenant_hex = parse_key(api_key).tenant_hex
         if (endpoint_id is None) == (url is None):
             raise ValueError("Pass exactly one of endpoint_id or url.")
         if url is None:
-            url = f"{base_url.rstrip('/')}/invoke/{encode_tenant(tenant)}/{quote(endpoint_id or '', safe='')}"
+            url = f"{base_url.rstrip('/')}/invoke/{tenant_hex}/{quote(endpoint_id or '', safe='')}"
         self.url = url
         self._config = HttpConfig(base_url=url, locale=locale, timeout=timeout, max_retries=max_retries)
-        self._headers = {"authorization": f"Bearer {credential}"}
+        self._headers = {"authorization": f"Bearer {api_key}"}
 
     def invoke(self, body: Mapping[str, Any]) -> ResponseResult:
         """Sends the body through the endpoint's request mapping and returns the answer in one shape. Without a mapping

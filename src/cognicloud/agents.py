@@ -106,17 +106,6 @@ class SkillVersion:
 
 
 @dataclass(frozen=True)
-class AgentKey:
-    """`prefix` tells keys apart. The full key is shown once, in the dashboard."""
-
-    id: str
-    name: str
-    prefix: str
-    created_at: str
-    last_used_at: Optional[str]
-
-
-@dataclass(frozen=True)
 class AgentAction:
     """`outcome` is `started`, `succeeded` or `failed`."""
 
@@ -215,37 +204,12 @@ class RunList:
     next_cursor: Optional[str]
 
 
-class AgentKeysApi:
-    """Agents keys (`cga_`) are created in the dashboard."""
-
-    def __init__(self, config: HttpConfig, headers: dict[str, str]) -> None:
-        self._config = config
-        self._headers = headers
-
-    def list(self) -> list[AgentKey]:
-        data = request(self._config, "GET", "/keys", self._headers)
-        return [
-            AgentKey(
-                id=item["id"],
-                name=item["name"],
-                prefix=item["prefix"],
-                created_at=item["createdAt"],
-                last_used_at=item.get("lastUsedAt"),
-            )
-            for item in data
-        ]
-
-    def revoke(self, key_id: str) -> None:
-        request(self._config, "DELETE", f"/keys/{quote(key_id, safe='')}", self._headers, retry=False)
-
-
 class AgentsApi:
     """Creates and manages agents. Runs are on `runs`, skills on `skills`."""
 
     def __init__(self, config: HttpConfig, headers: dict[str, str]) -> None:
         self._config = config
         self._headers = headers
-        self.keys = AgentKeysApi(config, headers)
 
     def _path(self, agent_id: str) -> str:
         return f"/agents/{quote(agent_id, safe='')}"

@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.0.0] - Unreleased
+
+### Breaking
+- One API key signs every call. `CogniCloud(api_key)` takes an account key (`cc_acc_`) for every product or a product key (`cc_gw_`, `cc_db_`, `cc_br_`, `cc_ml_`, `cc_ag_`) for one, created in the dashboard under Settings → API keys. The key names its workspace: the `token` and `tenant` arguments and the `tenant_id` header are gone.
+- `EndpointClient` takes `api_key` instead of the endpoint credential and `tenant`, and calls the endpoint as its owner; `client.endpoint(id)` makes one from a client (`gateway_base_url` option).
+- Removed: `CogniCloudBrowser` and `CogniCloudDatabase` (use `CogniCloud(api_key)` with a browser or database key), `database.keys`, `agents.keys`, `DatabaseKey`, `DatabaseKeysApi`, `AgentKey` and `AgentKeysApi`. Keys are managed in the dashboard.
+- A key in a retired format (`cgb_`, `cgd_`, `cga_`, `ccag_`, `cgm_`, `cgv_`, `cc_live_`) raises `retired_key` when the client is created, and anything that is not a key raises `invalid_key`; a missing one raises `missing_key`.
+
+### Added
+- `client.database.data(database_id=None)` queries a database: a database key narrowed to one database needs no id; an account key sends it as `x-database-id`.
+- `parse_key(key)` and `ParsedKey` read a key's kind and workspace without a request.
+- README: API keys and a "Migrating from 0.x" table.
+- Needs core 0.14.0, ai-gateway 0.10.0, agents 0.18.0, browser 0.13.0, database 0.5.0 and mail 0.11.0.
+
 ## [0.24.0] - Unreleased
 
 ### Added

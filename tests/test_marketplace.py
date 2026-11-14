@@ -5,6 +5,8 @@ from http.server import HTTPServer
 from cognicloud import CogniCloud
 from test_browser import Stub
 
+KEY = "cc_acc_636f676e69636c6f7564_" + "a" * 64
+
 BASE = "/api/v1/marketplace"
 TEMPLATE = {
     "slug": "web-researcher",
@@ -35,7 +37,7 @@ class MarketplaceTest(unittest.TestCase):
         self.addCleanup(self.server.shutdown)
 
     def client(self):
-        return CogniCloud("session-token", tenant="acme", marketplace_base_url=self.base, max_retries=0)
+        return CogniCloud(KEY, marketplace_base_url=self.base, max_retries=0)
 
     def test_lists_templates_by_category_and_reads_one(self):
         Stub.routes[("GET", f"{BASE}/templates")] = (200, [TEMPLATE])
@@ -45,7 +47,7 @@ class MarketplaceTest(unittest.TestCase):
         self.assertEqual(listed[0].publisher.workspace, "cognicloud")
         self.assertEqual(listed[0].skills[0].body, "Cite every fact.")
         self.assertEqual(Stub.seen[-1]["path"], f"{BASE}/templates?category=research")
-        self.assertEqual(Stub.seen[-1]["headers"]["tenant_id"], "acme")
+        self.assertNotIn("tenant_id", Stub.seen[-1]["headers"])
         marketplace.list_templates()
         self.assertEqual(Stub.seen[-1]["path"], f"{BASE}/templates")
         template = marketplace.get_template("web-researcher")

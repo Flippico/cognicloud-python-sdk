@@ -2,8 +2,11 @@ import threading
 import unittest
 from http.server import HTTPServer
 
-from cognicloud import CogniCloud, CogniCloudDatabase, CogniCloudError, Statement
+from cognicloud import CogniCloud, CogniCloudError, Statement
 from test_browser import Stub
+
+KEY = "cc_acc_636f676e69636c6f7564_" + "a" * 64
+DB_KEY = "cc_db_636f676e69636c6f7564_" + "d" * 64
 
 BASE = "/api/v1/database"
 RESULT = {"columns": [{"name": "id", "type": "int4"}], "rows": [{"id": 1}], "rowCount": 1, "truncated": False}
@@ -24,14 +27,14 @@ class DatabaseTest(unittest.TestCase):
         self.server.server_close()
 
     def db(self, max_retries=0):
-        return CogniCloudDatabase("cgd_key", database_base_url=self.base, max_retries=max_retries)
+        return CogniCloud(DB_KEY, database_base_url=self.base, max_retries=max_retries).database.data()
 
     def client(self):
-        return CogniCloud("session", tenant="acme", database_base_url=self.base, max_retries=0)
+        return CogniCloud(KEY, database_base_url=self.base, max_retries=0)
 
     def test_refuses_a_missing_key(self):
         with self.assertRaises(CogniCloudError) as caught:
-            CogniCloudDatabase(" ")
+            CogniCloud(" ")
         self.assertEqual(caught.exception.code, "missing_key")
 
     def test_runs_sql_with_the_key_and_no_tenant(self):
@@ -42,8 +45,15 @@ class DatabaseTest(unittest.TestCase):
         self.assertEqual(result.row_count, 1)
         sent = Stub.seen[0]
         self.assertEqual(sent["body"], {"sql": "SELECT id FROM orders WHERE status = $1", "params": ["paid"]})
-        self.assertEqual(sent["headers"]["authorization"], "Bearer cgd_key")
+        self.assertEqual(sent["headers"]["authorization"], f"Bearer {DB_KEY}")
         self.assertNotIn("tenant_id", sent["headers"])
+        self.assertNotIn("x-database-id", sent["headers"])
+
+    def test_names_the_database_with_an_account_key(self):
+        Stub.routes[("POST", f"{BASE}/query")] = (200, RESULT)
+        self.client().database.data("db1").query("SELECT 1")
+        self.assertEqual(Stub.seen[0]["headers"]["x-database-id"], "db1")
+        self.assertEqual(Stub.seen[0]["headers"]["authorization"], f"Bearer {KEY}")
 
     def test_does_not_repeat_a_query_because_it_may_change_data(self):
         Stub.routes[("POST", f"{BASE}/query")] = (503, {"error": "service_unavailable", "message": "Try again."})
@@ -159,8 +169,8 @@ class DatabaseTest(unittest.TestCase):
         self.assertEqual(database.get("db1").name, "Orders")
         database.delete("db1")
         self.assertEqual(Stub.seen[0]["body"], {"name": "Orders"})
-        self.assertEqual(Stub.seen[0]["headers"]["authorization"], "Bearer session")
-        self.assertEqual(Stub.seen[0]["headers"]["tenant_id"], "acme")
+        self.assertEqual(Stub.seen[0]["headers"]["authorization"], f"Bearer {KEY}")
+        self.assertNotIn("tenant_id", Stub.seen[0]["headers"])
 
     def test_runs_sql_and_lists_tables_as_the_owner(self):
         Stub.routes[("POST", f"{BASE}/databases/db1/query")] = (200, RESULT)
@@ -170,25 +180,16 @@ class DatabaseTest(unittest.TestCase):
         self.assertEqual(database.query("db1", "SELECT id FROM orders WHERE id = $1", [value]).row_count, 1)
         self.assertEqual(database.tables("db1")[0].name, "orders")
         self.assertEqual(Stub.seen[0]["body"], {"sql": "SELECT id FROM orders WHERE id = $1", "params": [value]})
-        self.assertEqual(Stub.seen[0]["headers"]["authorization"], "Bearer session")
+        self.assertEqual(Stub.seen[0]["headers"]["authorization"], f"Bearer {KEY}")
 
     def test_does_not_repeat_an_owner_query(self):
         Stub.routes[("POST", f"{BASE}/databases/db1/query")] = (503, {"error": "service_unavailable", "message": "No."})
-        client = CogniCloud("session", database_base_url=self.base, max_retries=2)
+        client = CogniCloud(KEY, database_base_url=self.base, max_retries=2)
         with self.assertRaises(CogniCloudError):
             client.database.query("db1", "DELETE FROM orders")
         self.assertEqual(len(Stub.seen), 1)
 
-    def test_lists_and_revokes_keys_and_pages_through_actions(self):
-        key = {
-            "id": "key1",
-            "databaseId": "db1",
-            "name": "Agent",
-            "access": "read",
-            "prefix": "cgd_1234",
-            "createdAt": "2026-10-30T10:00:00Z",
-            "lastUsedAt": None,
-        }
+    def test_pages_through_actions(self):
         action = {
             "id": "a1",
             "action": "create_key",
@@ -200,16 +201,11 @@ class DatabaseTest(unittest.TestCase):
             "outcome": "succeeded",
             "errorCode": None,
         }
-        Stub.routes[("GET", f"{BASE}/databases/db1/keys")] = (200, [key])
-        Stub.routes[("DELETE", f"{BASE}/databases/db1/keys/key1")] = (204, None)
         Stub.routes[("GET", f"{BASE}/actions")] = (200, {"items": [action], "nextCursor": "next"})
-        database = self.client().database
-        self.assertEqual(database.keys.list("db1")[0].access, "read")
-        database.keys.revoke("db1", "key1")
-        page = database.actions(limit=5, cursor="abc")
+        page = self.client().database.actions(limit=5, cursor="abc")
         self.assertEqual(page.next_cursor, "next")
         self.assertEqual(page.items[0].duration_ms, 12)
-        self.assertEqual(Stub.seen[2]["path"], f"{BASE}/actions?limit=5&cursor=abc")
+        self.assertEqual(Stub.seen[0]["path"], f"{BASE}/actions?limit=5&cursor=abc")
 
 
 if __name__ == "__main__":

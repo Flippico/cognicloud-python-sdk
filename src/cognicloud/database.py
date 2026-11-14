@@ -19,31 +19,6 @@ class HostedDatabase:
 
 
 @dataclass(frozen=True)
-class DatabaseKey:
-    """`access` is `read` or `write`. `prefix` tells keys apart; the secret is shown only when a key is created."""
-
-    id: str
-    database_id: str
-    name: str
-    access: str
-    prefix: str
-    created_at: str
-    last_used_at: Optional[str]
-
-    @classmethod
-    def from_json(cls, data: dict[str, Any]) -> "DatabaseKey":
-        return cls(
-            id=data["id"],
-            database_id=data["databaseId"],
-            name=data["name"],
-            access=data["access"],
-            prefix=data["prefix"],
-            created_at=data["createdAt"],
-            last_used_at=data.get("lastUsedAt"),
-        )
-
-
-@dataclass(frozen=True)
 class DatabaseAction:
     """`action` is `create_database`, `delete_database`, `create_key` or `revoke_key`."""
 
@@ -251,11 +226,12 @@ class TableApi:
 
 
 class DatabaseDataApi:
-    """Queries one database with its key."""
+    """Queries one database: the one a database key is limited to, or, with an account key or a key for every
+    database, the one `database_id` names (sent as `x-database-id`)."""
 
-    def __init__(self, config: HttpConfig, key: str) -> None:
+    def __init__(self, config: HttpConfig, headers: dict[str, str], database_id: Optional[str] = None) -> None:
         self._config = config
-        self._headers = {"authorization": f"Bearer {key}"}
+        self._headers = headers if database_id is None else {**headers, "x-database-id": database_id}
 
     def query(self, sql: str, params: Sequence[Any] = ()) -> QueryResult:
         """Runs one SQL statement, with `$1`, `$2` for `params`. It stops after 15 seconds. Never retried, because it
@@ -278,31 +254,16 @@ class DatabaseDataApi:
         return TableApi(self._config, self._headers, name)
 
 
-class DatabaseKeysApi:
-    """A database's keys. Keys are created in the dashboard and shown there once."""
-
-    def __init__(self, config: HttpConfig, headers: dict[str, str]) -> None:
-        self._config = config
-        self._headers = headers
-
-    def list(self, database_id: str) -> list[DatabaseKey]:
-        """Active keys, newest first."""
-        path = f"/databases/{quote(database_id, safe='')}/keys"
-        return [DatabaseKey.from_json(item) for item in request(self._config, "GET", path, self._headers)]
-
-    def revoke(self, database_id: str, key_id: str) -> None:
-        """The key stops working on its next request."""
-        path = f"/databases/{quote(database_id, safe='')}/keys/{quote(key_id, safe='')}"
-        request(self._config, "DELETE", path, self._headers, retry=False)
-
-
 class DatabaseApi:
-    """Creates and removes hosted Postgres databases. Needs a signed-in person's token; a key is refused."""
+    """Creates, lists and removes hosted Postgres databases, and queries them with `data`."""
 
     def __init__(self, config: HttpConfig, headers: dict[str, str]) -> None:
         self._config = config
         self._headers = headers
-        self.keys = DatabaseKeysApi(config, headers)
+
+    def data(self, database_id: Optional[str] = None) -> DatabaseDataApi:
+        """SQL and the query builder. Pass `database_id` with an account key; a key for one database needs none."""
+        return DatabaseDataApi(self._config, self._headers, database_id)
 
     def list(self) -> list[HostedDatabase]:
         """Newest first."""

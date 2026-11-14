@@ -5,6 +5,9 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 
 from cognicloud import CogniCloud, CogniCloudError
 
+KEY = "cc_acc_636f676e69636c6f7564_" + "a" * 64
+BROWSER_KEY = "cc_br_6163_" + "b" * 64
+
 SESSION = {
     "id": "b903c5d0",
     "status": "active",
@@ -80,7 +83,7 @@ class BrowserTests(unittest.TestCase):
         self.server.server_close()
 
     def client(self, **options):
-        return CogniCloud("amadeus-token", tenant="acme", browser_base_url=self.base, **options)
+        return CogniCloud(KEY, browser_base_url=self.base, **options)
 
     def test_creates_a_session_at_the_browser_base_with_the_session_headers(self):
         Stub.routes[("POST", "/v1/browser/sessions")] = (201, SESSION)
@@ -90,8 +93,8 @@ class BrowserTests(unittest.TestCase):
         self.assertTrue(session.cdp_url.startswith("wss://"))
         request = Stub.seen[0]
         self.assertEqual(request["body"], {"timeoutMinutes": 15})
-        self.assertEqual(request["headers"]["authorization"], "Bearer amadeus-token")
-        self.assertEqual(request["headers"]["tenant_id"], "acme")
+        self.assertEqual(request["headers"]["authorization"], f"Bearer {KEY}")
+        self.assertNotIn("tenant_id", request["headers"])
 
     def test_lists_reads_and_stops_sessions(self):
         stopped = dict(SESSION, status="stopped", cdpUrl=None, liveUrl=None, finishedAt="2026-10-22T10:05:00Z")
@@ -159,7 +162,7 @@ class BrowserTests(unittest.TestCase):
         probe = HTTPServer(("127.0.0.1", 0), Stub)
         closed_port = probe.server_address[1]
         probe.server_close()
-        client = CogniCloud("amadeus-token", browser_base_url=f"http://127.0.0.1:{closed_port}/v1/browser", max_retries=0)
+        client = CogniCloud(KEY, browser_base_url=f"http://127.0.0.1:{closed_port}/v1/browser", max_retries=0)
         with self.assertRaises(CogniCloudError) as caught:
             client.browser.sessions.list()
         self.assertEqual(caught.exception.status, 0)
@@ -207,7 +210,7 @@ class PageControlTest(unittest.TestCase):
         Stub.routes[("POST", f"{one}/agent-runs")] = (202, {**self.RUN, "status": "running"})
         Stub.routes[("GET", f"{one}/agent-runs/r1")] = (200, self.RUN)
         Stub.routes[("POST", f"{one}/agent-runs/r1/stop")] = (200, self.RUN)
-        sessions = CogniCloud("t", browser_base_url=self.base).browser.sessions
+        sessions = CogniCloud(KEY, browser_base_url=self.base).browser.sessions
         self.assertEqual(sessions.read_page("s1").elements[0].label, "Sign in")
         sessions.act("s1", {"type": "click", "index": 1})
         self.assertEqual(Stub.seen[-1]["body"], {"type": "click", "index": 1})
@@ -254,7 +257,7 @@ class StepRunTest(unittest.TestCase):
         Stub.routes[("GET", f"{runs}/r1")] = (200, self.RUN)
         for action in ["step", "human-done", "upload", "messages", "continue", "stop"]:
             Stub.routes[("POST", f"{runs}/r1/{action}")] = (200, self.RUN)
-        sessions = CogniCloud("t", browser_base_url=self.base).browser.sessions
+        sessions = CogniCloud(KEY, browser_base_url=self.base).browser.sessions
         self.assertEqual(sessions.create_step_run("s1", "Go", "e1", max_steps=5).upload_index, 4)
         self.assertEqual(Stub.seen[-1]["body"], {"task": "Go", "endpointId": "e1", "maxSteps": 5})
         self.assertEqual(sessions.get_step_run("s1", "r1").steps[0].actions, ["upload file"])
@@ -270,19 +273,39 @@ class StepRunTest(unittest.TestCase):
     def test_stores_a_file_and_deletes_a_profile(self):
         Stub.routes[("POST", "/v1/browser/sessions/s1/step-runs/r1/file")] = (200, {**self.RUN, "fileName": "my cv.pdf"})
         Stub.routes[("DELETE", "/v1/browser/profiles/p1")] = (204, None)
-        browser = CogniCloud("t", browser_base_url=self.base).browser
+        browser = CogniCloud(KEY, browser_base_url=self.base).browser
         self.assertEqual(browser.sessions.set_step_run_file("s1", "r1", "my cv.pdf", b"%PDF").file_name, "my cv.pdf")
         self.assertIn("name=my+cv.pdf", Stub.seen[-1]["path"])
         browser.delete_profile("p1")
         self.assertEqual(Stub.seen[-1]["method"], "DELETE")
 
 
-class TokenRequiredTest(unittest.TestCase):
-    def test_refuses_a_missing_or_blank_token_before_any_request(self):
-        for token in ["", "   ", None]:
-            with self.subTest(token=token), self.assertRaises(CogniCloudError) as raised:
-                CogniCloud(token)
-            self.assertEqual(raised.exception.code, "missing_token")
+class KeyRequiredTest(unittest.TestCase):
+    def test_refuses_a_missing_or_blank_key_before_any_request(self):
+        for key in ["", "   ", None]:
+            with self.subTest(key=key), self.assertRaises(CogniCloudError) as raised:
+                CogniCloud(key)
+            self.assertEqual(raised.exception.code, "missing_key")
+
+    def test_refuses_a_retired_key_with_a_pointer_to_settings(self):
+        for old in ["cgb_6163_abc", "cgd_x", "cga_6163_x", "cgm_x", "cgv_x", "cc_live_x", "ccag_6163_x"]:
+            with self.subTest(key=old), self.assertRaises(CogniCloudError) as raised:
+                CogniCloud(old)
+            self.assertEqual(raised.exception.code, "retired_key")
+            self.assertIn("Settings → API keys", str(raised.exception))
+
+    def test_refuses_something_that_is_not_a_key(self):
+        for other in ["eyJhbGciOi.x.y", "cc_acc_zz_abc", "cc_acc_616_abc", "cc_xx_6163_abc"]:
+            with self.subTest(key=other), self.assertRaises(CogniCloudError) as raised:
+                CogniCloud(other)
+            self.assertEqual(raised.exception.code, "invalid_key")
+
+    def test_reads_a_keys_kind_and_workspace(self):
+        from cognicloud import parse_key
+
+        self.assertEqual(parse_key(KEY).tenant_hex, "636f676e69636c6f7564")
+        self.assertEqual(parse_key(KEY).kind, "account")
+        self.assertEqual(parse_key("cc_db_61_" + "f" * 64).kind, "database")
 
 
 class BrowserKeyClientTest(unittest.TestCase):
@@ -297,22 +320,12 @@ class BrowserKeyClientTest(unittest.TestCase):
         self.server.shutdown()
         self.server.server_close()
 
-    def test_refuses_a_missing_or_blank_key_before_any_request(self):
-        from cognicloud import CogniCloudBrowser
-
-        for key in ["", "   ", None]:
-            with self.subTest(key=key), self.assertRaises(CogniCloudError) as raised:
-                CogniCloudBrowser(key)
-            self.assertEqual(raised.exception.code, "missing_key")
-
     def test_sends_only_the_key_with_no_tenant_header(self):
-        from cognicloud import CogniCloudBrowser
-
         Stub.routes[("GET", "/v1/browser/profiles")] = (200, [])
-        browser = CogniCloudBrowser("cgb_abc", browser_base_url=self.base).browser
+        browser = CogniCloud(BROWSER_KEY, browser_base_url=self.base).browser
         self.assertEqual(browser.profiles(), [])
         request = Stub.seen[0]
-        self.assertEqual(request["headers"]["authorization"], "Bearer cgb_abc")
+        self.assertEqual(request["headers"]["authorization"], f"Bearer {BROWSER_KEY}")
         self.assertNotIn("tenant_id", request["headers"])
 
 
@@ -329,20 +342,18 @@ class WindowSizeTest(unittest.TestCase):
         self.server.server_close()
 
     def test_sends_a_window_size_and_returns_the_one_the_session_has(self):
-        from cognicloud import BrowserScreen, CogniCloudBrowser
+        from cognicloud import BrowserScreen
 
         Stub.routes[("POST", "/v1/browser/sessions")] = (201, dict(SESSION, screen={"width": 1280, "height": 720}))
-        session = CogniCloudBrowser("cgb_abc", browser_base_url=self.base).browser.sessions.create(
+        session = CogniCloud(BROWSER_KEY, browser_base_url=self.base).browser.sessions.create(
             timeout_minutes=15, screen=BrowserScreen(width=1280, height=720)
         )
         self.assertEqual(session.screen, BrowserScreen(width=1280, height=720))
         self.assertEqual(Stub.seen[0]["body"], {"timeoutMinutes": 15, "screen": {"width": 1280, "height": 720}})
 
     def test_asks_for_a_visible_window_only_when_headful(self):
-        from cognicloud import CogniCloudBrowser
-
         Stub.routes[("POST", "/v1/browser/sessions")] = (201, SESSION)
-        sessions = CogniCloudBrowser("cgb_abc", browser_base_url=self.base).browser.sessions
+        sessions = CogniCloud(BROWSER_KEY, browser_base_url=self.base).browser.sessions
         sessions.create(headful=True)
         self.assertEqual(Stub.seen[0]["body"], {"headful": True})
         sessions.create()
@@ -362,14 +373,12 @@ class ProfileUploadTest(unittest.TestCase):
         self.server.server_close()
 
     def test_sends_the_archive_as_the_raw_body_named_in_the_query(self):
-        from cognicloud import CogniCloudBrowser
-
         profile = {
             "id": "5f1c9a2e", "name": "Shop", "sizeBytes": 3,
             "createdAt": "2026-10-21T10:20:00Z", "lastUsedAt": None, "expiresAt": "2027-01-19T10:20:00Z",
         }
         Stub.routes[("POST", "/v1/browser/profiles/import")] = (201, profile)
-        browser = CogniCloudBrowser("cgb_abc", browser_base_url=self.base).browser
+        browser = CogniCloud(BROWSER_KEY, browser_base_url=self.base).browser
         created = browser.import_profile("Shop account", bytes([31, 139, 8]))
         self.assertEqual(created.id, "5f1c9a2e")
         self.assertEqual(Stub.seen[0]["path"], "/v1/browser/profiles/import?name=Shop+account")
