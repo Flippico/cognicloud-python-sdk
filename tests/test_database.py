@@ -5,8 +5,10 @@ from http.server import HTTPServer
 from cognicloud import CogniCloud, CogniCloudError, Statement
 from test_browser import Stub
 
-KEY = "cc_acc_636f676e69636c6f7564_" + "a" * 64
-DB_KEY = "cc_db_636f676e69636c6f7564_" + "d" * 64
+
+from _keys import KEY, PRODUCT_KEYS
+
+DB_KEY = PRODUCT_KEYS["database"]
 
 BASE = "/api/v1/database"
 RESULT = {"columns": [{"name": "id", "type": "int4"}], "rows": [{"id": 1}], "rowCount": 1, "truncated": False}
@@ -27,15 +29,15 @@ class DatabaseTest(unittest.TestCase):
         self.server.server_close()
 
     def db(self, max_retries=0):
-        return CogniCloud(DB_KEY, database_base_url=self.base, max_retries=max_retries).database.data()
+        return CogniCloud(KEY, {"database": DB_KEY}, database_base_url=self.base, max_retries=max_retries).database.data()
 
     def client(self):
-        return CogniCloud(KEY, database_base_url=self.base, max_retries=0)
+        return CogniCloud(KEY, PRODUCT_KEYS, database_base_url=self.base, max_retries=0)
 
     def test_refuses_a_missing_key(self):
         with self.assertRaises(CogniCloudError) as caught:
             CogniCloud(" ")
-        self.assertEqual(caught.exception.code, "missing_key")
+        self.assertEqual(caught.exception.code, "missing_account_key")
 
     def test_runs_sql_with_the_key_and_no_tenant(self):
         Stub.routes[("POST", f"{BASE}/query")] = (200, RESULT)
@@ -53,7 +55,7 @@ class DatabaseTest(unittest.TestCase):
         Stub.routes[("POST", f"{BASE}/query")] = (200, RESULT)
         self.client().database.data("db1").query("SELECT 1")
         self.assertEqual(Stub.seen[0]["headers"]["x-database-id"], "db1")
-        self.assertEqual(Stub.seen[0]["headers"]["authorization"], f"Bearer {KEY}")
+        self.assertEqual(Stub.seen[0]["headers"]["authorization"], f"Bearer {PRODUCT_KEYS['database']}")
 
     def test_does_not_repeat_a_query_because_it_may_change_data(self):
         Stub.routes[("POST", f"{BASE}/query")] = (503, {"error": "service_unavailable", "message": "Try again."})
@@ -169,7 +171,7 @@ class DatabaseTest(unittest.TestCase):
         self.assertEqual(database.get("db1").name, "Orders")
         database.delete("db1")
         self.assertEqual(Stub.seen[0]["body"], {"name": "Orders"})
-        self.assertEqual(Stub.seen[0]["headers"]["authorization"], f"Bearer {KEY}")
+        self.assertEqual(Stub.seen[0]["headers"]["authorization"], f"Bearer {PRODUCT_KEYS['database']}")
         self.assertNotIn("tenant_id", Stub.seen[0]["headers"])
 
     def test_runs_sql_and_lists_tables_as_the_owner(self):
@@ -180,11 +182,11 @@ class DatabaseTest(unittest.TestCase):
         self.assertEqual(database.query("db1", "SELECT id FROM orders WHERE id = $1", [value]).row_count, 1)
         self.assertEqual(database.tables("db1")[0].name, "orders")
         self.assertEqual(Stub.seen[0]["body"], {"sql": "SELECT id FROM orders WHERE id = $1", "params": [value]})
-        self.assertEqual(Stub.seen[0]["headers"]["authorization"], f"Bearer {KEY}")
+        self.assertEqual(Stub.seen[0]["headers"]["authorization"], f"Bearer {PRODUCT_KEYS['database']}")
 
     def test_does_not_repeat_an_owner_query(self):
         Stub.routes[("POST", f"{BASE}/databases/db1/query")] = (503, {"error": "service_unavailable", "message": "No."})
-        client = CogniCloud(KEY, database_base_url=self.base, max_retries=2)
+        client = CogniCloud(KEY, PRODUCT_KEYS, database_base_url=self.base, max_retries=2)
         with self.assertRaises(CogniCloudError):
             client.database.query("db1", "DELETE FROM orders")
         self.assertEqual(len(Stub.seen), 1)

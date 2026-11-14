@@ -10,7 +10,7 @@ from urllib.parse import quote
 from ._http import HttpConfig, open_stream, request
 from ._sse import Record, records
 from .errors import CogniCloudError
-from .keys import parse_key
+from .keys import check_keys, pair_headers
 
 DEFAULT_GATEWAY_BASE_URL = "https://cognicloud.dev/api/v1/ai-gateway"
 
@@ -177,7 +177,7 @@ def encode_tenant(tenant: str) -> str:
 
 
 class EndpointClient:
-    """Calls one AI Gateway endpoint with an account key or an AI Gateway key, as the endpoint's owner.
+    """Calls one AI Gateway endpoint with your account key and an AI Gateway key, as the endpoint's owner.
 
     Pass the endpoint's invoke URL as `url` (as CogniCloud issued it), or its `endpoint_id`; the workspace comes from
     the key. Invoke calls are never retried, because a retried call can be billed twice.
@@ -185,7 +185,8 @@ class EndpointClient:
 
     def __init__(
         self,
-        api_key: str,
+        account_key: str,
+        gateway_key: str,
         *,
         endpoint_id: Optional[str] = None,
         url: Optional[str] = None,
@@ -194,14 +195,15 @@ class EndpointClient:
         timeout: float = 30.0,
         max_retries: int = 2,
     ) -> None:
-        tenant_hex = parse_key(api_key).tenant_hex
+        tenant_hex = check_keys(account_key, {"gateway": gateway_key}).tenant_hex
+        headers = pair_headers(account_key, {"gateway": gateway_key}, "gateway")
         if (endpoint_id is None) == (url is None):
             raise ValueError("Pass exactly one of endpoint_id or url.")
         if url is None:
             url = f"{base_url.rstrip('/')}/invoke/{tenant_hex}/{quote(endpoint_id or '', safe='')}"
         self.url = url
         self._config = HttpConfig(base_url=url, locale=locale, timeout=timeout, max_retries=max_retries)
-        self._headers = {"authorization": f"Bearer {api_key}"}
+        self._headers = headers
 
     def invoke(self, body: Mapping[str, Any]) -> ResponseResult:
         """Sends the body through the endpoint's request mapping and returns the answer in one shape. Without a mapping

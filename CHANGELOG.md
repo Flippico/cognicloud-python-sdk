@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.0.0] - Unreleased
+
+### Breaking
+- An account key is required and works in a pair with a product key. `CogniCloud(account_key, product_keys)` replaces `CogniCloud(api_key)`; `product_keys` maps `gateway`, `database`, `browser`, `mail` and `agents` to their keys. Each call sends its product key as the Bearer token and the account key in `X-CogniCloud-Account-Key`; the services refuse a product key alone (`401`) and an account key alone (`403`).
+- `EndpointClient(account_key, gateway_key, ...)` instead of `EndpointClient(api_key, ...)`.
+- `browser`, `mail`, `database`, `agents`, `skills` and `runs` are properties that raise `missing_product_key` when their key is missing. Web Builder and the marketplace send the account key alone.
+- New error codes when the client is created: `missing_account_key`, `key_mismatch`, `invalid_key` for a key of the wrong kind.
+
+### Added
+- `check_keys`, `ACCOUNT_KEY_HEADER`. README: API keys rewritten, "Migrating from 1.x".
+- Needs the services on common-lib 0.10.0.
+
 ## [1.0.0] - Unreleased
 
 ### Breaking

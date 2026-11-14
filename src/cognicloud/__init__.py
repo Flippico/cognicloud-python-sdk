@@ -60,7 +60,7 @@ from .endpoint import (
     Usage,
 )
 from .errors import CogniCloudError
-from .keys import ParsedKey, parse_key
+from .keys import ACCOUNT_KEY_HEADER, ParsedKey, check_keys, parse_key
 from .mail import (
     CreatedMailbox,
     MailApi,
@@ -128,7 +128,9 @@ __all__ = [
     "BrowserSessionsApi",
     "CogniCloud",
     "CogniCloudError",
+    "ACCOUNT_KEY_HEADER",
     "ParsedKey",
+    "check_keys",
     "parse_key",
     "CreatedMailbox",
     "DatabaseAction",
@@ -166,4 +168,4 @@ __all__ = [
     "StreamEvent",
     "Usage",
 ]
-__version__ = "1.0.0"
+__version__ = "2.0.0"

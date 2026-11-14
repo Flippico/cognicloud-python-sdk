@@ -6,7 +6,8 @@ from http.server import HTTPServer
 from cognicloud import CogniCloud, CogniCloudError
 from test_browser import Stub
 
-KEY = "cc_acc_636f676e69636c6f7564_" + "a" * 64
+
+from _keys import KEY, PRODUCT_KEYS
 
 MAILBOX = {
     "id": "7c1f0c2e-6a5b-4d3e-9f10-1a2b3c4d5e6f",
@@ -32,7 +33,7 @@ class MailTest(unittest.TestCase):
         self.server.server_close()
 
     def client(self):
-        return CogniCloud(KEY, mail_base_url=self.base, max_retries=0)
+        return CogniCloud(KEY, PRODUCT_KEYS, mail_base_url=self.base, max_retries=0)
 
     def test_creates_a_mailbox_and_returns_the_password_once(self):
         Stub.routes[("POST", "/api/v1/mail/mailboxes")] = (201, {"mailbox": MAILBOX, "password": "Vf9!mQ2xTr7#pL4wNz8K"})
@@ -41,7 +42,7 @@ class MailTest(unittest.TestCase):
         self.assertEqual(created.password, "Vf9!mQ2xTr7#pL4wNz8K")
         sent = Stub.seen[0]
         self.assertEqual(sent["body"], {"localPart": "support"})
-        self.assertEqual(sent["headers"]["authorization"], f"Bearer {KEY}")
+        self.assertEqual(sent["headers"]["authorization"], f"Bearer {PRODUCT_KEYS['mail']}")
         self.assertNotIn("tenant_id", sent["headers"])
 
     def test_lists_with_paging_and_reads_connection_settings(self):

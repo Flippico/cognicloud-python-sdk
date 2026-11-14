@@ -5,7 +5,8 @@ from http.server import HTTPServer
 from cognicloud import CogniCloud, CogniCloudError
 from test_browser import Stub
 
-KEY = "cc_acc_636f676e69636c6f7564_" + "a" * 64
+
+from _keys import KEY, PRODUCT_KEYS
 
 AGENT_ID = "0f9a7c1e-3b2d-4e5f-8a6b-7c8d9e0f1a2b"
 SKILL_ID = "5d4c3b2a-1f0e-4d9c-8b7a-6f5e4d3c2b1a"
@@ -88,7 +89,7 @@ class AgentsTestCase(unittest.TestCase):
         self.addCleanup(self.server.shutdown)
 
     def client(self):
-        return CogniCloud(KEY, agents_base_url=self.base, max_retries=0)
+        return CogniCloud(KEY, PRODUCT_KEYS, agents_base_url=self.base, max_retries=0)
 
 
 class AgentsTest(AgentsTestCase):
@@ -121,7 +122,7 @@ class AgentsTest(AgentsTestCase):
                 "skillIds": [SKILL_ID],
             },
         )
-        self.assertEqual(request["headers"]["authorization"], f"Bearer {KEY}")
+        self.assertEqual(request["headers"]["authorization"], f"Bearer {PRODUCT_KEYS['agents']}")
         self.assertNotIn("tenant_id", request["headers"])
 
     def test_lists_reads_updates_rotates_and_deletes(self):
@@ -254,28 +255,30 @@ class RunsTest(AgentsTestCase):
                 Stub.routes[("POST", f"{BASE}/agents/{AGENT_ID}/runs")] = (status, {"error": code, "message": "No."})
                 Stub.seen = []
                 with self.assertRaises(CogniCloudError) as caught:
-                    CogniCloud(KEY, agents_base_url=self.base, max_retries=2).runs.start(AGENT_ID, "Go")
+                    CogniCloud(KEY, PRODUCT_KEYS, agents_base_url=self.base, max_retries=2).runs.start(AGENT_ID, "Go")
                 self.assertEqual((caught.exception.status, caught.exception.code), (status, code))
                 self.assertEqual(len(Stub.seen), 1)
 
 
 class AgentKeyClientTest(AgentsTestCase):
-    def test_runs_with_an_agent_key_and_sends_no_tenant(self):
-        agent_key = "cc_ag_636f676e69636c6f7564_" + "c" * 64
+    def test_runs_with_the_agents_key_and_the_account_key(self):
         Stub.routes[("POST", f"{BASE}/agents/{AGENT_ID}/runs")] = (202, RUNNING)
-        Stub.routes[("GET", f"{BASE}/agents")] = (403, {"error": "forbidden", "message": "One agent only."})
-        client = CogniCloud(agent_key, agents_base_url=self.base, max_retries=0)
+        client = CogniCloud(KEY, {"agents": PRODUCT_KEYS["agents"]}, agents_base_url=self.base, max_retries=0)
         self.assertEqual(client.runs.start(AGENT_ID, "Go").id, RUN_ID)
         request = Stub.seen[0]
-        self.assertEqual(request["headers"]["authorization"], f"Bearer {agent_key}")
+        self.assertEqual(request["headers"]["authorization"], f"Bearer {PRODUCT_KEYS['agents']}")
+        self.assertEqual(request["headers"]["x-cognicloud-account-key"], KEY)
         self.assertNotIn("tenant_id", request["headers"])
         with self.assertRaises(CogniCloudError) as caught:
-            client.agents.list()
-        self.assertEqual((caught.exception.status, caught.exception.code), (403, "forbidden"))
+            client.browser.countries()
+        self.assertEqual(caught.exception.code, "missing_product_key")
 
     def test_refuses_a_retired_agent_credential(self):
         with self.assertRaises(CogniCloudError) as caught:
             CogniCloud("ccag_6163_secret", agents_base_url=self.base)
+        self.assertEqual(caught.exception.code, "retired_key")
+        with self.assertRaises(CogniCloudError) as caught:
+            CogniCloud(KEY, {"agents": "ccag_6163_secret"})
         self.assertEqual(caught.exception.code, "retired_key")
 
 

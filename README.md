@@ -10,33 +10,36 @@ Python 3.10 or newer. No dependencies.
 pip install "git+https://github.com/Flippico/cognicloud-python-sdk.git"
 ```
 
-1.0 changes how you sign in: one API key replaces the session token, the `tenant` option and the per-product keys. See [Migrating from 0.x](#migrating-from-0x).
+2.0: every call sends your account key together with a product key. See [Migrating from 1.x](#migrating-from-1x).
 
 ## API keys
 
-Create a key in the dashboard under **Settings → API keys**. It is shown once.
+Create keys in the dashboard under **Settings → API keys**. Each is shown once. You need two kinds, and every call uses both:
 
-- An **account key** (`cc_acc_...`) reaches every product of the workspace and acts as the person who created it.
-- A **product key** reaches one product: `cc_gw_` AI Gateway, `cc_db_` Database, `cc_br_` Browser, `cc_ml_` Mail, `cc_ag_` Agents. It can be narrowed to one resource, such as one endpoint, database or agent.
+- Your **account key** (`cc_acc_...`): who you are and which workspace. Required on every call; on its own it does nothing.
+- A **product key** for each product you call: `cc_gw_` AI Gateway, `cc_db_` Database, `cc_br_` Browser, `cc_ml_` Mail, `cc_ag_` Agents. It can be narrowed to one resource, such as one model, database or agent.
 
-The key names its workspace, so there is no `tenant` option and no `tenant_id` header. Keys cannot be created through the SDK or the API.
+Each call sends the product key as the Bearer token and the account key in `X-CogniCloud-Account-Key`. Both must be from the same person and workspace; the services refuse a product key alone (`401`) and an account key alone (`403`). The keys name their workspace, so there is no `tenant` option.
 
 ```python
 import os
 
 from cognicloud import CogniCloud
 
-cc = CogniCloud(os.environ["COGNICLOUD_API_KEY"])
+cc = CogniCloud(
+    os.environ["COGNICLOUD_ACCOUNT_KEY"],
+    {"database": os.environ["COGNICLOUD_DATABASE_KEY"], "browser": os.environ["COGNICLOUD_BROWSER_KEY"]},
+)
 ```
 
-A missing or blank key raises `CogniCloudError` with code `missing_key` when the client is created. A key in a retired format (`cgb_`, `cgd_`, `cga_`, `ccag_`, `cgm_`, `cgv_`, `cc_live_`) raises `retired_key`, and anything else, such as a session token, raises `invalid_key`. `parse_key(key)` reads a key's kind and workspace without a request.
+The client checks the keys when it is created: a missing account key raises `missing_account_key`, a key of the wrong kind `invalid_key`, keys from different workspaces `key_mismatch`, an old format (`cgb_`, `cgd_`, `cga_`, `ccag_`, `cgm_`, `cgv_`, `cc_live_`) `retired_key`. Using a product without its key, for example `cc.mail` with no `"mail"` key, raises `missing_product_key`. Web Builder and the marketplace have no product key yet: they take the account key alone. `parse_key(key)` and `check_keys(account_key, product_keys)` read keys without a request.
 
 ## Browser sessions
 
-Browser calls take an account key or a browser key (`cc_br_`):
+Browser calls need a browser key (`cc_br_`) next to the account key:
 
 ```python
-browser = CogniCloud(os.environ["COGNICLOUD_BROWSER_KEY"]).browser
+browser = CogniCloud(os.environ["COGNICLOUD_ACCOUNT_KEY"], {"browser": os.environ["COGNICLOUD_BROWSER_KEY"]}).browser
 session = browser.sessions.create(timeout_minutes=15)
 ```
 
@@ -75,7 +78,7 @@ cc.browser.sessions.stop(session.id)
 
 ## Mail
 
-Mailboxes on the Flippico mail server, with an account key or a mail key (`cc_ml_`). The password is returned once; store it.
+Mailboxes on the Flippico mail server; needs a mail key (`cc_ml_`). The password is returned once; store it.
 
 ```python
 created = cc.mail.create("support")
@@ -91,7 +94,7 @@ cc.mail.create("ceo", domain="yourcompany.com")
 
 ## Database
 
-Hosted Postgres. An account key or a database key (`cc_db_`) for every database creates and lists databases. `cc.database.data()` queries one: with a database key narrowed to one database it needs nothing else; with an account key, name the database, `cc.database.data(database.id)` (sent as `x-database-id`).
+Hosted Postgres; needs a database key (`cc_db_`). A database key for every database creates and lists databases; `cc.database.data(database.id)` queries one (sent as `x-database-id`). With a database key narrowed to one database, `cc.database.data()` needs no id.
 
 ```python
 from cognicloud import Statement
@@ -190,7 +193,7 @@ cc.runs.stop(started.id)
 - An Agents key (`cc_ag_`) narrowed to one agent replaces the old agent credential: it runs that agent and nothing else; other calls raise 403.
 
 ```python
-agent_client = CogniCloud(os.environ["COGNICLOUD_AGENT_KEY"])
+agent_client = CogniCloud(os.environ["COGNICLOUD_ACCOUNT_KEY"], {"agents": os.environ["COGNICLOUD_AGENT_KEY"]})
 run = agent_client.runs.run_and_wait(agent_id, "Check the status page")
 ```
 
@@ -251,7 +254,7 @@ next_answer = endpoint.responses(ResponsesRequest("And this one?", previous_resp
 vectors = endpoint.embeddings(EmbeddingsRequest(["first text", "second text"], dimensions=256))
 ```
 
-The call acts as the endpoint's owner, with an account key or an AI Gateway key; a key narrowed to one endpoint reaches only that one. The workspace in the invoke address comes from the key. `EndpointClient(api_key, endpoint_id=...)` or `EndpointClient(api_key, url=endpoint_url)` makes the same client without a `CogniCloud`.
+The call needs a gateway key (`cc_gw_`) and acts as the endpoint's owner. The workspace in the invoke address comes from the account key. `EndpointClient(account_key, gateway_key, endpoint_id=...)` or `EndpointClient(account_key, gateway_key, url=endpoint_url)` makes the same client without a `CogniCloud`.
 
 `McpTool` names an MCP server with `server_url` and `bearer_token`. The gateway checks the address (https, with no credentials or fragment) and passes both to the provider. A tool with only `server_label` names a server the gateway is configured with. The answer's `response_id` continues the conversation on the same endpoint, and `output_items` holds the tool calls. `embeddings` needs an endpoint whose deployment is an embedding model, and returns one vector per input.
 
@@ -279,7 +282,8 @@ Every failed request raises `CogniCloudError` with `status` (the HTTP status, `0
 
 | Option | Default | |
 | --- | --- | --- |
-| `api_key` | required | An account key or a product key from Settings → API keys. It names its workspace. |
+| `account_key` | required | Your account key from Settings → API keys. It names the workspace. |
+| `product_keys` | `{}` | One key per product: `gateway`, `database`, `browser`, `mail`, `agents`. |
 | `locale` | `"en"` | `Accept-Language` for localised responses. |
 | `timeout` | `30.0` | Seconds per request. |
 | `max_retries` | `2` | For `429` and `5xx`, on reads only. Starts and stops are never retried. |
@@ -290,6 +294,14 @@ Every failed request raises `CogniCloudError` with `status` (the HTTP status, `0
 | `web_builder_base_url` | `https://cognicloud.dev/api/v1/web-builder` | Point at another environment. |
 | `agents_base_url` | `https://cognicloud.dev/api/v1/agents` | Point at another environment. |
 | `marketplace_base_url` | `https://cognicloud.dev/api/v1/marketplace` | Point at another environment. |
+
+## Migrating from 1.x
+
+| 1.x | 2.0 |
+| --- | --- |
+| `CogniCloud("cc_acc_...")` | `CogniCloud("cc_acc_...", {"database": "cc_db_...", ...})` |
+| `CogniCloud("cc_db_...")` | `CogniCloud(account_key, {"database": "cc_db_..."})` |
+| `EndpointClient(api_key, endpoint_id=...)` | `EndpointClient(account_key, gateway_key, endpoint_id=...)` |
 
 ## Migrating from 0.x
 

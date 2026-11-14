@@ -14,7 +14,8 @@ from cognicloud import (
     ResponsesRequest,
 )
 
-KEY = "cc_acc_636f676e69636c6f7564_" + "a" * 64
+
+from _keys import KEY, PRODUCT_KEYS
 
 ANSWER = {
     "id": "0c4e0e4a-0000-0000-0000-000000000000",
@@ -77,14 +78,14 @@ class EndpointTests(unittest.TestCase):
         Stub.seen = []
 
     def client(self, **options):
-        return EndpointClient(KEY, endpoint_id="e1", base_url=self.base, **options)
+        return EndpointClient(KEY, PRODUCT_KEYS["gateway"], endpoint_id="e1", base_url=self.base, **options)
 
     def test_invoke_sends_the_credential_and_returns_the_answer(self):
         Stub.routes[INVOKE_PATH] = json_route(200, ANSWER)
         answer = self.client().invoke({"messages": [{"role": "user", "content": "Hi"}]})
         self.assertEqual(answer.output, "Valid.")
         self.assertEqual(answer.usage.total_tokens, 13)
-        self.assertEqual(Stub.seen[0]["headers"]["authorization"], f"Bearer {KEY}")
+        self.assertEqual(Stub.seen[0]["headers"]["authorization"], f"Bearer {PRODUCT_KEYS['gateway']}")
 
     def test_responses_sends_mcp_tools_by_label(self):
         Stub.routes[INVOKE_PATH] = json_route(200, ANSWER)
@@ -203,23 +204,24 @@ class EndpointTests(unittest.TestCase):
 
     def test_an_endpoint_needs_exactly_one_address(self):
         with self.assertRaises(ValueError):
-            EndpointClient(KEY)
+            EndpointClient(KEY, PRODUCT_KEYS["gateway"])
         with self.assertRaises(ValueError):
-            EndpointClient(KEY, endpoint_id="e1", url=self.base + INVOKE_PATH)
+            EndpointClient(KEY, PRODUCT_KEYS["gateway"], endpoint_id="e1", url=self.base + INVOKE_PATH)
 
     def test_names_the_keys_workspace_in_the_address(self):
-        acme = EndpointClient("cc_gw_61636d65_" + "e" * 64, endpoint_id="e1", base_url="https://g.test/v1/")
+        acme_account, acme_gateway = "cc_acc_61636d65_" + "f" * 64, "cc_gw_61636d65_" + "e" * 64
+        acme = EndpointClient(acme_account, acme_gateway, endpoint_id="e1", base_url="https://g.test/v1/")
         self.assertEqual(acme.url, "https://g.test/v1/invoke/61636d65/e1")
         with self.assertRaises(CogniCloudError) as caught:
-            EndpointClient("cc_live_secret", endpoint_id="e1")
+            EndpointClient(KEY, "cc_live_secret", endpoint_id="e1")
         self.assertEqual(caught.exception.code, "retired_key")
 
     def test_a_client_gives_an_endpoint_with_the_same_key(self):
         from cognicloud import CogniCloud
 
         Stub.routes[INVOKE_PATH] = json_route(200, ANSWER)
-        CogniCloud(KEY, gateway_base_url=self.base).endpoint("e1").invoke({"input": "Hi"})
-        self.assertEqual(Stub.seen[0]["headers"]["authorization"], f"Bearer {KEY}")
+        CogniCloud(KEY, PRODUCT_KEYS, gateway_base_url=self.base).endpoint("e1").invoke({"input": "Hi"})
+        self.assertEqual(Stub.seen[0]["headers"]["authorization"], f"Bearer {PRODUCT_KEYS['gateway']}")
 
 
 if __name__ == "__main__":

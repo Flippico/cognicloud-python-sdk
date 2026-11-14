@@ -5,9 +5,10 @@ from http.server import HTTPServer
 from cognicloud import CogniCloud, CogniCloudError
 from test_browser import Stub
 
-KEY = "cc_acc_636f676e69636c6f7564_" + "a" * 64
 
 ID = "7c1f0c2e-6a5b-4d3e-9f10-1a2b3c4d5e6f"
+from _keys import KEY, PRODUCT_KEYS
+
 APPLICATION = {
     "id": ID,
     "subdomain": "shop",
@@ -35,7 +36,7 @@ class WebBuilderTest(unittest.TestCase):
         self.server.server_close()
 
     def client(self):
-        return CogniCloud(KEY, web_builder_base_url=self.base, max_retries=0)
+        return CogniCloud(KEY, PRODUCT_KEYS, web_builder_base_url=self.base, max_retries=0)
 
     def test_creates_an_application_with_the_session_and_tenant(self):
         Stub.routes[("POST", "/api/v1/web-builder/applications")] = (201, APPLICATION)

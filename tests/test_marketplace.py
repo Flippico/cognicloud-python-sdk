@@ -5,7 +5,8 @@ from http.server import HTTPServer
 from cognicloud import CogniCloud
 from test_browser import Stub
 
-KEY = "cc_acc_636f676e69636c6f7564_" + "a" * 64
+
+from _keys import KEY, PRODUCT_KEYS
 
 BASE = "/api/v1/marketplace"
 TEMPLATE = {
@@ -37,7 +38,7 @@ class MarketplaceTest(unittest.TestCase):
         self.addCleanup(self.server.shutdown)
 
     def client(self):
-        return CogniCloud(KEY, marketplace_base_url=self.base, max_retries=0)
+        return CogniCloud(KEY, PRODUCT_KEYS, marketplace_base_url=self.base, max_retries=0)
 
     def test_lists_templates_by_category_and_reads_one(self):
         Stub.routes[("GET", f"{BASE}/templates")] = (200, [TEMPLATE])
