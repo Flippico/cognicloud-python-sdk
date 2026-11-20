@@ -80,6 +80,17 @@ from .marketplace import (
     TemplatePublisher,
     TemplateSkill,
 )
+from .storage import (
+    Bucket,
+    ObjectList,
+    ObjectMetadata,
+    StorageApi,
+    StorageBucketsApi,
+    StorageFoldersApi,
+    StorageObject,
+    StorageObjectsApi,
+    Visibility,
+)
 from .web_builder import (
     Application,
     GithubRepositories,
@@ -90,6 +101,15 @@ from .web_builder import (
 )
 
 __all__ = [
+    "Bucket",
+    "ObjectList",
+    "ObjectMetadata",
+    "StorageApi",
+    "StorageBucketsApi",
+    "StorageFoldersApi",
+    "StorageObject",
+    "StorageObjectsApi",
+    "Visibility",
     "Agent",
     "AgentAction",
     "AgentActionList",
@@ -168,4 +188,4 @@ __all__ = [
     "StreamEvent",
     "Usage",
 ]
-__version__ = "2.0.0"
+__version__ = "2.1.0"

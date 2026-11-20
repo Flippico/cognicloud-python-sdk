@@ -1,6 +1,19 @@
 # Changelog
 
-## [2.0.0] - Unreleased
+## [2.1.0] - 2026-11-20
+
+### Added
+- `client.storage` manages buckets and objects, with a storage key (`cc_st_`, `product_keys["storage"]`): `buckets` (`list`, `get`, `create`, `update`, `delete`, with `force=True` to delete a non-empty bucket), `objects` (`list` with `prefix`, `delimiter`, `cursor` and `limit`, `pages` over every page, `upload` from bytes, a bytearray, a memoryview, a `pathlib.Path` or an open binary file (a `str` raises `TypeError`, so text is never read as a path), `download` with `range_`, `metadata`, `delete`) and `folders.create`. `Bucket`, `ObjectList`, `StorageObject`, `ObjectMetadata` and `Visibility` are exported. The `storage_base_url` option points it at another environment.
+- Object keys and prefixes are checked before any request: an empty, `.` or `..` part, a leading `/`, a control character or an empty key raises `CogniCloudError` with code `invalid_key`. One trailing `/` is allowed. Each key part is URL-encoded on its own.
+- `CogniCloudError` with status `409` and code `conflict` when a bucket with objects is deleted without `force`.
+
+### Documentation
+- README: Storage section, the `cc_st_` key and the `storage_base_url` option.
+
+### Notes
+- Needs storage service 0.2.0 and Core with `cc_st_` keys.
+
+## [2.0.0] - 2026-11-14
 
 ### Breaking
 - An account key is required and works in a pair with a product key. `CogniCloud(account_key, product_keys)` replaces `CogniCloud(api_key)`; `product_keys` maps `gateway`, `database`, `browser`, `mail` and `agents` to their keys. Each call sends its product key as the Bearer token and the account key in `X-CogniCloud-Account-Key`; the services refuse a product key alone (`401`) and an account key alone (`403`).

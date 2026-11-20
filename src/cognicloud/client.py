@@ -11,6 +11,7 @@ from .endpoint import DEFAULT_GATEWAY_BASE_URL, EndpointClient
 from .keys import check_keys, pair_headers
 from .mail import MailApi
 from .marketplace import MarketplaceApi
+from .storage import StorageApi
 from .web_builder import WebBuilderApi
 
 DEFAULT_BROWSER_BASE_URL = "https://cognicloud.dev/api/v1/browser"
@@ -19,13 +20,15 @@ DEFAULT_DATABASE_BASE_URL = "https://cognicloud.dev/api/v1/database"
 DEFAULT_WEB_BUILDER_BASE_URL = "https://cognicloud.dev/api/v1/web-builder"
 DEFAULT_AGENTS_BASE_URL = "https://cognicloud.dev/api/v1/agents"
 DEFAULT_MARKETPLACE_BASE_URL = "https://cognicloud.dev/api/v1/marketplace"
+DEFAULT_STORAGE_BASE_URL = "https://cognicloud.dev/api/v1/storage"
 
 
 class CogniCloud:
     """Every CogniCloud product: your account key together with one product key per product.
 
     `account_key` (`cc_acc_`) is required and sent with every call. `product_keys` maps a product to its key:
-    `gateway` (`cc_gw_`), `database` (`cc_db_`), `browser` (`cc_br_`), `mail` (`cc_ml_`), `agents` (`cc_ag_`). Each
+    `gateway` (`cc_gw_`), `database` (`cc_db_`), `browser` (`cc_br_`), `mail` (`cc_ml_`), `agents` (`cc_ag_`), `storage`
+    (`cc_st_`). Each
     call sends its product key as the Bearer token and the account key in `X-CogniCloud-Account-Key`. Create both in
     the dashboard under Settings → API keys. Web Builder and the marketplace take the account key alone for now.
     """
@@ -45,6 +48,7 @@ class CogniCloud:
         web_builder_base_url: str = DEFAULT_WEB_BUILDER_BASE_URL,
         agents_base_url: str = DEFAULT_AGENTS_BASE_URL,
         marketplace_base_url: str = DEFAULT_MARKETPLACE_BASE_URL,
+        storage_base_url: str = DEFAULT_STORAGE_BASE_URL,
     ) -> None:
         self._keys = dict(product_keys or {})
         check_keys(account_key, self._keys)
@@ -59,6 +63,7 @@ class CogniCloud:
             "mail": config(mail_base_url),
             "database": config(database_base_url),
             "agents": config(agents_base_url),
+            "storage": config(storage_base_url),
         }
         account_only = {"authorization": f"Bearer {account_key}"}
         self.web_builder = WebBuilderApi(config(web_builder_base_url), account_only)
@@ -86,6 +91,11 @@ class CogniCloud:
     def agents(self) -> AgentsApi:
         """Needs `product_keys["agents"]`."""
         return AgentsApi(self._configs["agents"], self._headers("agents"))
+
+    @property
+    def storage(self) -> StorageApi:
+        """Needs `product_keys["storage"]`."""
+        return StorageApi(self._configs["storage"], self._headers("storage"))
 
     @property
     def skills(self) -> SkillsApi:

@@ -55,9 +55,12 @@ class Stub(BaseHTTPRequestHandler):
         if isinstance(answer, list):
             answer = answer.pop(0) if len(answer) > 1 else answer[0]
         status, payload = answer
-        raw = b"" if payload is None else json.dumps(payload).encode()
+        if isinstance(payload, bytes):
+            raw, content_type = payload, "application/octet-stream"
+        else:
+            raw, content_type = (b"" if payload is None else json.dumps(payload).encode()), "application/json"
         self.send_response(status)
-        self.send_header("content-type", "application/json")
+        self.send_header("content-type", content_type)
         self.send_header("content-length", str(len(raw)))
         self.end_headers()
         self.wfile.write(raw)

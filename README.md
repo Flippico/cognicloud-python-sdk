@@ -1,6 +1,6 @@
 # cognicloud
 
-Use CogniCloud from Python: browser sessions, mail, databases, the web builder, agents and AI Gateway endpoints. Same behaviour as [`@cognicloud/sdk`](https://github.com/Flippico/cognicloud-js-sdk) and [`cognicloud-sdk`](https://github.com/Flippico/cognicloud-rust-sdk).
+Use CogniCloud from Python: browser sessions, mail, databases, storage, the web builder, agents and AI Gateway endpoints. Same behaviour as [`@cognicloud/sdk`](https://github.com/Flippico/cognicloud-js-sdk) and [`cognicloud-sdk`](https://github.com/Flippico/cognicloud-rust-sdk).
 
 ## Install
 
@@ -17,7 +17,7 @@ pip install "git+https://github.com/Flippico/cognicloud-python-sdk.git"
 Create keys in the dashboard under **Settings → API keys**. Each is shown once. You need two kinds, and every call uses both:
 
 - Your **account key** (`cc_acc_...`): who you are and which workspace. Required on every call; on its own it does nothing.
-- A **product key** for each product you call: `cc_gw_` AI Gateway, `cc_db_` Database, `cc_br_` Browser, `cc_ml_` Mail, `cc_ag_` Agents. It can be narrowed to one resource, such as one model, database or agent.
+- A **product key** for each product you call: `cc_gw_` AI Gateway, `cc_db_` Database, `cc_br_` Browser, `cc_ml_` Mail, `cc_ag_` Agents, `cc_st_` Storage. It can be narrowed to one resource, such as one model, database or agent.
 
 Each call sends the product key as the Bearer token and the account key in `X-CogniCloud-Account-Key`. Both must be from the same person and workspace; the services refuse a product key alone (`401`) and an account key alone (`403`). The keys name their workspace, so there is no `tenant` option.
 
@@ -131,6 +131,34 @@ db.query("INSERT INTO members (id, user_id) VALUES ($1, $2)", [member_id, user_i
 ```
 
 `cc.database.query(database.id, sql, params)` and `cc.database.tables(database.id)` also work without `data`. `cc.database.list`, `get` and `delete` manage databases, and `cc.database.actions` lists what was done.
+
+## Storage
+
+Buckets and objects; needs a storage key (`cc_st_`).
+
+```python
+bucket = cc.storage.buckets.create("photos", description="Product shots")
+cc.storage.buckets.update("photos", visibility="public_read")
+
+stored = cc.storage.objects.upload("photos", "reports/q1.pdf", Path("q1.pdf"))  # a file: content type from its name
+cc.storage.objects.upload("photos", "notes.txt", "hello".encode(), content_type="text/plain")  # bytes
+data = cc.storage.objects.download("photos", "reports/q1.pdf")
+head = cc.storage.objects.download("photos", "reports/q1.pdf", range_="bytes=0-1023")
+meta = cc.storage.objects.metadata("photos", "reports/q1.pdf")
+cc.storage.objects.delete("photos", "reports/q1.pdf")
+
+cc.storage.folders.create("photos", "reports/2026/")
+for page in cc.storage.objects.pages("photos", prefix="reports/"):
+    for item in page.objects:
+        print(item.key, item.size)
+```
+
+- `buckets.list`, `get`, `update` and `delete` manage buckets. `update` changes `description` and `visibility` (`private` or `public_read`); `description=None` clears it. Deleting a bucket that still holds objects raises `CogniCloudError` with status `409`; pass `delete("photos", force=True)` to delete its objects too. This cannot be undone.
+- `objects.list(bucket, prefix=, delimiter=, cursor=, limit=)` returns one page: `folders` (prefixes), `objects` and `next_cursor`. The delimiter defaults to `/`; pass `delimiter=""` to list every key flat. `pages` follows `next_cursor` and yields each page.
+- `upload` replaces an object with the same key, up to 100 MB. `body` is bytes, a bytearray or a memoryview; a `pathlib.Path` (read in full); or an open binary file. A `str` raises `TypeError`: wrap a file path in `Path(...)` or call `.encode()` on text. The content type is `content_type` if you pass it, else guessed from a file's name, else `application/octet-stream`.
+- `download` returns bytes. `range_` is a `Range` header value, such as `bytes=0-1023`, `bytes=500-` or `bytes=-500`.
+- Keys may contain `/` to make folders; each part is encoded for you. A key or prefix with an empty, `.` or `..` part, a leading `/` or a control character raises `CogniCloudError` with code `invalid_key` before any request. One trailing `/` is allowed, as in `reports/`.
+- Reads are retried on `429` and `5xx`; uploads, updates and deletes are not.
 
 ## Web builder
 
@@ -283,7 +311,7 @@ Every failed request raises `CogniCloudError` with `status` (the HTTP status, `0
 | Option | Default | |
 | --- | --- | --- |
 | `account_key` | required | Your account key from Settings → API keys. It names the workspace. |
-| `product_keys` | `{}` | One key per product: `gateway`, `database`, `browser`, `mail`, `agents`. |
+| `product_keys` | `{}` | One key per product: `gateway`, `database`, `browser`, `mail`, `agents`, `storage`. |
 | `locale` | `"en"` | `Accept-Language` for localised responses. |
 | `timeout` | `30.0` | Seconds per request. |
 | `max_retries` | `2` | For `429` and `5xx`, on reads only. Starts and stops are never retried. |
@@ -294,6 +322,7 @@ Every failed request raises `CogniCloudError` with `status` (the HTTP status, `0
 | `web_builder_base_url` | `https://cognicloud.dev/api/v1/web-builder` | Point at another environment. |
 | `agents_base_url` | `https://cognicloud.dev/api/v1/agents` | Point at another environment. |
 | `marketplace_base_url` | `https://cognicloud.dev/api/v1/marketplace` | Point at another environment. |
+| `storage_base_url` | `https://cognicloud.dev/api/v1/storage` | Point at another environment. |
 
 ## Migrating from 1.x
 

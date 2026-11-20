@@ -12,4 +12,5 @@ PRODUCT_KEYS = {
     "browser": _key("cc_br_", "3"),
     "mail": _key("cc_ml_", "4"),
     "agents": _key("cc_ag_", "5"),
+    "storage": _key("cc_st_", "6"),
 }

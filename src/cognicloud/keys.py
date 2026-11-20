@@ -14,6 +14,7 @@ PREFIXES = {
     "cc_br_": "browser",
     "cc_ml_": "mail",
     "cc_ag_": "agents",
+    "cc_st_": "storage",
     "cc_vt_": "vault",
 }
 RETIRED = ("cc_live_", "ccag_", "cga_", "cgb_", "cgd_", "cgm_", "cgv_")
@@ -50,6 +51,7 @@ PRODUCT_LABELS = {
     "browser": "Browser",
     "mail": "Mail",
     "agents": "Agents",
+    "storage": "Storage",
     "vault": "Vault",
 }
 

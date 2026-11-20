@@ -29,9 +29,11 @@ def request(
     body: Optional[Any] = None,
     retry: bool = True,
     raw: Optional[tuple[bytes, str]] = None,
+    binary: bool = False,
 ) -> Any:
     """Sends one request and returns the decoded JSON body (None for 204). Retries 429 and 5xx only when `retry` is set.
-    `raw` is a body sent as it is, with its content type, instead of JSON."""
+    `raw` is a body sent as it is, with its content type, instead of JSON. `binary` returns the response bytes as they
+    are, for downloads."""
     url = config.base_url.rstrip("/") + path
     retries = config.max_retries if retry else 0
     payload = None if body is None else json.dumps(body).encode("utf-8")
@@ -46,8 +48,10 @@ def request(
         http_request = urllib.request.Request(url, data=payload, method=method, headers=all_headers)
         try:
             with urllib.request.urlopen(http_request, timeout=config.timeout) as response:
-                raw = response.read()
-                return None if response.status == 204 or not raw else json.loads(raw)
+                data = response.read()
+                if binary:
+                    return data
+                return None if response.status == 204 or not data else json.loads(data)
         except urllib.error.HTTPError as error:
             if error.code in RETRYABLE_STATUSES and attempt < retries:
                 time.sleep(0.25 * 2**attempt)
